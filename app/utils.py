@@ -57,6 +57,7 @@ def _make_watermark_pdf(
     page_height: float,
     serial: str,
     project_name: str,
+    owner_company_name: str,
     qr_png: io.BytesIO,
 ) -> io.BytesIO:
 
@@ -87,23 +88,30 @@ def _make_watermark_pdf(
     text_y = qr_y - 10
 
 
-    c.setFont("Helvetica-Bold", font_size)
-    c.drawRightString(text_right, text_y, serial)
-    text_y -= line_gap
-
-
     font_name = _register_arabic_font()
-    arabic = fix_arabic(project_name)
+    serial_line = fix_arabic(f"\u0627\u0644\u0631\u0642\u0645 \u0627\u0644\u062a\u0633\u0644\u0633\u0644\u064a: {serial}")
+    owner_line = fix_arabic(f"\u0627\u0644\u062c\u0647\u0629 \u0627\u0644\u0645\u0627\u0644\u0643\u0629: {owner_company_name}")
+    project_line = fix_arabic(f"\u0627\u0633\u0645 \u0627\u0644\u0645\u0634\u0631\u0648\u0639: {project_name}")
 
     c.setFont(font_name, font_size)
 
-    c.drawRightString(text_right, text_y, arabic)
+    c.drawRightString(text_right, text_y, serial_line)
+    text_y -= line_gap
+    c.drawRightString(text_right, text_y, owner_line)
+    text_y -= line_gap
+    c.drawRightString(text_right, text_y, project_line)
 
     c.save()
     packet.seek(0)
     return packet
 
-def stamp_pdf(input_pdf_path: str, output_pdf_path: str, serial: str, project_name: str) -> None:
+def stamp_pdf(
+    input_pdf_path: str,
+    output_pdf_path: str,
+    serial: str,
+    project_name: str,
+    owner_company_name: str,
+) -> None:
 
     reader = PdfReader(input_pdf_path)
     if not reader.pages:
@@ -114,7 +122,14 @@ def stamp_pdf(input_pdf_path: str, output_pdf_path: str, serial: str, project_na
     page_height = float(first_page.mediabox.height)
 
     qr_png = create_qr_buffer(serial)
-    watermark_stream = _make_watermark_pdf(page_width, page_height, serial, project_name, qr_png)
+    watermark_stream = _make_watermark_pdf(
+        page_width,
+        page_height,
+        serial,
+        project_name,
+        owner_company_name,
+        qr_png,
+    )
 
     watermark_reader = PdfReader(watermark_stream)
     watermark_page = watermark_reader.pages[0]
