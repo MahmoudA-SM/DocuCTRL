@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+pypdf
+segno
+arabic-reshaper
+python-bidi
+python-multipart
