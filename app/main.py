@@ -4,6 +4,7 @@ from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from . import models, database, utils
+from fastapi.responses import FileResponse
 
 
 os.makedirs("storage", exist_ok=True)
@@ -18,8 +19,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-    return x_user_id
 
 @app.post("/upload")
 async def upload_document(
@@ -40,6 +39,8 @@ async def upload_document(
 
     project = db.query(models.Project).filter(models.Project.id == project_id).first()
     owner = db.query(models.OwnerCompany).filter(models.OwnerCompany.id == owner_company_id).first()
+    if project.owner_id != owner_company_id:
+        raise HTTPException(status_code=400, detail="Owner company does not match project owner")
     if not project or not owner:
         raise HTTPException(status_code=404, detail="Project or Owner Company not found")
 
@@ -113,6 +114,7 @@ def verify_document(serial: str, db: Session = Depends(get_db)):
     return {
         "valid": True,
         "serial": doc.serial,
+        "document_id": doc.id,
         "filename": doc.filename,
         "project_id": doc.project_id,
         "owner_company_id": doc.owner_company_id,
@@ -121,15 +123,35 @@ def verify_document(serial: str, db: Session = Depends(get_db)):
 
 @app.get("/projects/{project_id}/documents")
 def list_documents(project_id: int, db: Session = Depends(get_db)):
-    docs = db.query(models.Document).filter(
-        models.Document.project_id == project_id
-    ).all()
+    docs = db.query(models.Document).filter(models.Document.project_id == project_id).order_by(models.Document.id.desc()).all()
+
 
     return [
         {
             "id": d.id,
             "serial": d.serial,
+            "owner_company_id": d.owner_company_id,
             "filename": d.filename
         }
         for d in docs
     ]
+
+
+@app.get("/documents/{document_id}/download")
+def download_document(document_id: int, db: Session = Depends(get_db)):
+    doc = db.query(models.Document).filter(models.Document.id == document_id).first()
+    if not doc or not doc.serial:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # same naming convention used in upload
+    file_path = f"storage/{doc.serial}_{doc.filename}"
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Stamped file missing on disk")
+
+    # download_name is what the browser saves as
+    return FileResponse(
+        path=file_path,
+        media_type="application/pdf",
+        filename=f"{doc.serial}_{doc.filename}"
+    )
