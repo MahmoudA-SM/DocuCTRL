@@ -10,14 +10,12 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
 
-
 def fix_arabic(text: str) -> str:
 
     if not text:
         return ""
     reshaped = arabic_reshaper.reshape(text)
     return get_display(reshaped)
-
 
 
 def create_qr_buffer(data: str) -> io.BytesIO:
@@ -29,11 +27,9 @@ def create_qr_buffer(data: str) -> io.BytesIO:
     return out
 
 
-
 def generate_serial(owner_code: str, year: int, seq_id: int) -> str:
 
     return f"{owner_code}-{year}-{seq_id:04d}"
-
 
 
 def _register_arabic_font() -> str:
