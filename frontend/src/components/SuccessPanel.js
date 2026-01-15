@@ -1,4 +1,4 @@
-import { Box, Button, Chip, Typography } from "@mui/material";
+﻿import { Box, Button, Chip, Typography } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
@@ -6,10 +6,10 @@ function SuccessPanel({ serial, downloadUrl, verifyUrl, onCopy }) {
   return (
     <Box
       sx={{
-        backgroundColor: "rgba(255, 255, 255, 0.9)",
-        borderRadius: 3,
+        backgroundColor: "var(--panel)",
+        borderRadius: 2,
         p: 3,
-        boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+        border: "1px solid var(--border)",
         display: "flex",
         flexDirection: "column",
         gap: 2,

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Box,
   Button,
   FormControl,
@@ -47,8 +47,21 @@ function UploadForm({
         </Select>
       </FormControl>
 
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-        <Button variant="outlined" component="label">
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 1.5,
+          borderRadius: 2,
+          border: "2px dashed rgba(31, 77, 122, 0.4)",
+          p: 3,
+          backgroundColor: "rgba(31, 77, 122, 0.06)",
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+          اختر ملف PDF
+        </Typography>
+        <Button variant="outlined" component="label" fullWidth>
           اختيار ملف PDF
           <input
             hidden
@@ -67,6 +80,7 @@ function UploadForm({
         variant="contained"
         size="large"
         disabled={!selectedProjectId || !file || isSubmitting}
+        fullWidth
       >
         رفع المستند
       </Button>

@@ -1,9 +1,9 @@
-import { Box, CircularProgress, Typography } from "@mui/material";
+﻿import { Box, CircularProgress, Typography } from "@mui/material";
 
 const labels = {
   uploading: "جاري رفع الملف",
-  stamping: "جاري ختم الوثيقة",
-  finalizing: "جاري تجهيز البيانات",
+  stamping: "جاري ختم المستند",
+  finalizing: "جاري تجهيز الروابط",
 };
 
 function ProgressIndicator({ stage }) {
@@ -13,8 +13,8 @@ function ProgressIndicator({ stage }) {
 
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-      <CircularProgress size={24} />
-      <Typography variant="body1" color="text.secondary">
+      <CircularProgress size={20} />
+      <Typography variant="body2" color="text.secondary">
         {labels[stage] || "جاري المعالجة"}
       </Typography>
     </Box>

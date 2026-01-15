@@ -1,69 +1,133 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { Box, Container, Typography, Button } from "@mui/material";
+﻿import { useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
+import { Box, Container, Typography, Button, IconButton } from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import UploadFileOutlinedIcon from "@mui/icons-material/UploadFileOutlined";
+import FolderOpenOutlinedIcon from "@mui/icons-material/FolderOpenOutlined";
 import UploadPage from "./pages/UploadPage";
 import DocumentListPage from "./pages/DocumentListPage";
 
 function App() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const sidebarWidth = sidebarCollapsed ? 84 : 260;
+
   return (
     <BrowserRouter>
       <Box
         sx={{
           minHeight: "100vh",
           display: "flex",
-          flexDirection: "column",
-          position: "relative",
-          overflow: "hidden",
-          "&::before": {
-            content: '""',
-            position: "absolute",
-            inset: "-20% -10%",
-            background:
-              "radial-gradient(circle at 20% 20%, rgba(242, 169, 0, 0.25), transparent 55%), radial-gradient(circle at 80% 15%, rgba(11, 110, 79, 0.18), transparent 50%), radial-gradient(circle at 50% 85%, rgba(33, 150, 243, 0.12), transparent 55%)",
-            zIndex: 0,
-          },
+          flexDirection: { xs: "column", md: "row" },
+          backgroundColor: "var(--bg)",
         }}
       >
         <Box
           sx={{
-            position: "relative",
-            zIndex: 1,
-            py: { xs: 4, md: 6 },
+            width: { xs: "100%", md: sidebarWidth },
+            order: { xs: 0, md: 0 },
+            borderLeft: { xs: "none", md: "1px solid var(--border)" },
+            borderBottom: { xs: "1px solid var(--border)", md: "none" },
+            backgroundColor: "var(--panel)",
+            p: 3,
+            transition: "width 200ms ease",
+            overflow: "hidden",
           }}
         >
-          <Container maxWidth="lg">
-            <Box
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              {sidebarCollapsed ? "DC" : "DocuCTRL"}
+            </Typography>
+            <IconButton
+              size="small"
+              onClick={() => setSidebarCollapsed((prev) => !prev)}
+              aria-label={sidebarCollapsed ? "توسيع القائمة" : "طي القائمة"}
+            >
+              <MenuIcon fontSize="small" />
+            </IconButton>
+          </Box>
+          {!sidebarCollapsed ? (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              منصة موثوقة لختم الوثائق والتحقق منها
+            </Typography>
+          ) : null}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <Button
+              component={Link}
+              to="/upload"
+              variant="contained"
+              fullWidth
+              startIcon={<UploadFileOutlinedIcon />}
+              title={sidebarCollapsed ? "رفع مستند جديد" : undefined}
+              aria-label={sidebarCollapsed ? "رفع مستند جديد" : undefined}
               sx={{
-                display: "flex",
-                alignItems: { xs: "flex-start", md: "center" },
-                justifyContent: "space-between",
-                gap: 2,
-                flexDirection: { xs: "column", md: "row" },
+                justifyContent: sidebarCollapsed ? "center" : "flex-start",
+                px: sidebarCollapsed ? 1 : 2,
+                minWidth: sidebarCollapsed ? 44 : "auto",
+                height: sidebarCollapsed ? 44 : "auto",
+                borderRadius: sidebarCollapsed ? 2.5 : 1.5,
+                "& .MuiButton-startIcon": {
+                  margin: 0,
+                },
               }}
             >
-              <Box>
-                <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                  DocuCTRL
-                </Typography>
-                <Typography variant="subtitle1" color="text.secondary">
-                  منصة موثوقة لختم الوثائق والتحقق منها
-                </Typography>
-              </Box>
-              <Box sx={{ display: "flex", gap: 1 }}>
+              {sidebarCollapsed ? "" : "رفع مستند جديد"}
+            </Button>
+            <Button
+              component={Link}
+              to="/projects/1/documents"
+              variant="outlined"
+              fullWidth
+              startIcon={<FolderOpenOutlinedIcon />}
+              title={sidebarCollapsed ? "عرض المستندات" : undefined}
+              aria-label={sidebarCollapsed ? "عرض المستندات" : undefined}
+              sx={{
+                justifyContent: sidebarCollapsed ? "center" : "flex-start",
+                px: sidebarCollapsed ? 1 : 2,
+                minWidth: sidebarCollapsed ? 44 : "auto",
+                height: sidebarCollapsed ? 44 : "auto",
+                borderRadius: sidebarCollapsed ? 2.5 : 1.5,
+                "& .MuiButton-startIcon": {
+                  margin: 0,
+                },
+              }}
+            >
+              {sidebarCollapsed ? "" : "عرض المستندات"}
+            </Button>
+          </Box>
+        </Box>
+
+        <Box sx={{ flex: 1, order: { xs: 1, md: 1 } }}>
+          <Box
+            sx={{
+              borderBottom: "1px solid var(--border)",
+              backgroundColor: "var(--panel)",
+            }}
+          >
+            <Container maxWidth="xl" sx={{ py: 2.5 }}>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Box>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    لوحة التحكم
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    إدارة رفع المستندات والتحقق منها
+                  </Typography>
+                </Box>
                 <Button variant="contained" href="/upload">
                   رفع مستند
                 </Button>
               </Box>
-            </Box>
+            </Container>
+          </Box>
+
+          <Container maxWidth="xl" sx={{ py: 4 }}>
+            <Routes>
+              <Route path="/" element={<Navigate to="/upload" replace />} />
+              <Route path="/upload" element={<UploadPage />} />
+              <Route path="/projects/:projectId/documents" element={<DocumentListPage />} />
+            </Routes>
           </Container>
         </Box>
-
-        <Container maxWidth="lg" sx={{ position: "relative", zIndex: 1, pb: 6 }}>
-          <Routes>
-            <Route path="/" element={<Navigate to="/upload" replace />} />
-            <Route path="/upload" element={<UploadPage />} />
-            <Route path="/projects/:projectId/documents" element={<DocumentListPage />} />
-          </Routes>
-        </Container>
       </Box>
     </BrowserRouter>
   );

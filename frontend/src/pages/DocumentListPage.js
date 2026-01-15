@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   Alert,
@@ -61,28 +61,28 @@ function DocumentListPage() {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Box>
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>
+      <Card sx={{ borderRadius: 2, border: "1px solid var(--border)" }}>
+        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
             مستندات {projectName}
           </Typography>
           <Typography color="text.secondary">
             عرض المستندات المختومة مع إمكانية التحميل.
           </Typography>
-        </Box>
-        <Button component={Link} to="/upload" variant="outlined">
-          رفع مستند جديد
-        </Button>
-      </Box>
+          <Button component={Link} to="/upload" variant="contained" sx={{ alignSelf: "flex-start" }}>
+            رفع مستند جديد
+          </Button>
+        </CardContent>
+      </Card>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
 
-      <Card sx={{ borderRadius: 4, boxShadow: "0 16px 36px rgba(0,0,0,0.08)" }}>
+      <Card sx={{ borderRadius: 2, border: "1px solid var(--border)" }}>
         <CardContent>
           {loading ? (
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               <CircularProgress size={22} />
-              <Typography color="text.secondary">جاري التحميل...</Typography>
+              <Typography color="text.secondary">جاري تحميل المستندات...</Typography>
             </Box>
           ) : (
             <Table>
@@ -118,7 +118,7 @@ function DocumentListPage() {
                           href={buildDownloadUrl(doc.id)}
                           target="_blank"
                         >
-                          تنزيل
+                          تحميل
                         </Button>
                       </TableCell>
                     </TableRow>

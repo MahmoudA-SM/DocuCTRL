@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Card,
@@ -18,6 +18,12 @@ import {
   buildDownloadUrl,
   buildVerifyUrl,
 } from "../services/api";
+
+const stageText = {
+  uploading: "جاري رفع الملف",
+  stamping: "جاري ختم المستند",
+  finalizing: "جاري تجهيز الروابط",
+};
 
 function UploadPage() {
   const [me, setMe] = useState(null);
@@ -65,7 +71,7 @@ function UploadPage() {
   const handleFileChange = (event) => {
     const selected = event.target.files && event.target.files[0];
     if (selected && selected.type !== "application/pdf") {
-      setUploadError("يرجى اختيار ملف PDF فقط.");
+      setUploadError("يرجى اختيار ملف PDF صالح.");
       event.target.value = "";
       return;
     }
@@ -76,7 +82,7 @@ function UploadPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!file || !selectedProjectId || !me) {
-      setUploadError("يرجى اختيار مشروع وملف PDF صالح.");
+      setUploadError("يرجى اختيار المشروع وملف PDF قبل المتابعة.");
       return;
     }
 
@@ -107,7 +113,7 @@ function UploadPage() {
       clearTimers();
       setUploadStage("error");
       if (error.response && error.response.status === 403) {
-        setUploadError("غير مصرح لك بالتحميل إلى هذا المشروع.");
+        setUploadError("غير مصرح لك بالرفع لهذا المشروع.");
       } else {
         setUploadError("حدث خطأ أثناء رفع الملف. حاول مرة أخرى.");
       }
@@ -128,60 +134,86 @@ function UploadPage() {
   };
 
   return (
-    <Grid container spacing={4}>
-      <Grid item xs={12}>
-        <Typography variant="h5" sx={{ fontWeight: 600 }}>
-          رفع مستند جديد
-        </Typography>
-        <Typography color="text.secondary">
-          اختر المشروع وارفع ملف PDF ليتم ختمه والتحقق منه تلقائيا.
-        </Typography>
-      </Grid>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      {initialError ? <Alert severity="error">{initialError}</Alert> : null}
 
-      {initialError ? (
-        <Grid item xs={12}>
-          <Alert severity="error">{initialError}</Alert>
+      <Card sx={{ borderRadius: 2, border: "1px solid var(--border)" }}>
+        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            رفع مستند جديد
+          </Typography>
+          <Typography color="text.secondary">
+            اختر المشروع وارفع ملف PDF ليتم ختمه والتحقق منه تلقائيا.
+          </Typography>
+        </CardContent>
+      </Card>
+
+      <Grid container spacing={{ xs: 3, md: 3 }} alignItems="stretch">
+        <Grid item xs={12} md={5}>
+          <Card sx={{ borderRadius: 2, border: "1px solid var(--border)" }}>
+            <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <Typography variant="h6">بيانات الرفع</Typography>
+              {selectedProject ? (
+                <Typography variant="body2" color="text.secondary">
+                  الجهة المالكة: {selectedProject.owner_company_name || "غير محدد"}
+                </Typography>
+              ) : null}
+              <UploadForm
+                projects={projects}
+                selectedProjectId={selectedProjectId}
+                onProjectChange={handleProjectChange}
+                file={file}
+                onFileChange={handleFileChange}
+                onSubmit={handleSubmit}
+                error={uploadError}
+                isSubmitting={loading}
+              />
+              {uploadStage && uploadStage !== "done" ? (
+                <Box
+                  sx={{
+                    mt: 1,
+                    p: 1.5,
+                    borderRadius: 2,
+                    border: "1px solid var(--border)",
+                    backgroundColor: "#fafbfc",
+                  }}
+                >
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    {stageText[uploadStage] || "جاري المعالجة"}
+                  </Typography>
+                  <ProgressIndicator stage={uploadStage} />
+                </Box>
+              ) : null}
+            </CardContent>
+          </Card>
         </Grid>
-      ) : null}
 
-      <Grid item xs={12} md={6}>
-        <Card sx={{ borderRadius: 4, boxShadow: "0 18px 40px rgba(0,0,0,0.08)" }}>
-          <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Typography variant="h6">بيانات الرفع</Typography>
-            {selectedProject ? (
-              <Typography variant="body2" color="text.secondary">
-                الجهة المالكة: {selectedProject.owner_company_name || "غير محدد"}
-              </Typography>
-            ) : null}
-            <UploadForm
-              projects={projects}
-              selectedProjectId={selectedProjectId}
-              onProjectChange={handleProjectChange}
-              file={file}
-              onFileChange={handleFileChange}
-              onSubmit={handleSubmit}
-              error={uploadError}
-              isSubmitting={loading}
-            />
-            <ProgressIndicator stage={uploadStage} />
-          </CardContent>
-        </Card>
+        <Grid item xs={12} md={7}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 3, height: "100%" }}>
+            {uploadResult ? (
+              <SuccessPanel
+                serial={uploadResult.serial}
+                downloadUrl={uploadResult.downloadUrl}
+                verifyUrl={uploadResult.verifyUrl}
+                onCopy={handleCopy}
+              />
+            ) : (
+              <Card sx={{ borderRadius: 2, border: "1px solid var(--border)" }}>
+                <CardContent>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                    معلومات المستند
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    بعد اكتمال الرفع ستظهر هنا تفاصيل المستند وروابط التحميل.
+                  </Typography>
+                </CardContent>
+              </Card>
+            )}
+            <PdfPreview url={uploadResult?.downloadUrl || ""} />
+          </Box>
+        </Grid>
       </Grid>
-
-      <Grid item xs={12} md={6}>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {uploadResult ? (
-            <SuccessPanel
-              serial={uploadResult.serial}
-              downloadUrl={uploadResult.downloadUrl}
-              verifyUrl={uploadResult.verifyUrl}
-              onCopy={handleCopy}
-            />
-          ) : null}
-          <PdfPreview url={uploadResult?.downloadUrl || ""} />
-        </Box>
-      </Grid>
-    </Grid>
+    </Box>
   );
 }
 

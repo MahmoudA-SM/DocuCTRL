@@ -1,10 +1,25 @@
-import { Box, Typography } from "@mui/material";
+﻿import { Box, Typography } from "@mui/material";
 
 function PdfPreview({ url }) {
   if (!url) {
     return (
-      <Box sx={{ p: 3, textAlign: "center", color: "text.secondary" }}>
-        <Typography variant="body2">معاينة الـ PDF ستظهر هنا بعد الرفع</Typography>
+      <Box
+        sx={{
+          p: 4,
+          textAlign: "center",
+          color: "text.secondary",
+          minHeight: 320,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: 2,
+          border: "1px dashed var(--border)",
+          backgroundColor: "#fafbfc",
+        }}
+      >
+        <Typography variant="body2">
+          معاينة ملف PDF ستظهر هنا بعد الرفع
+        </Typography>
       </Box>
     );
   }
@@ -12,9 +27,10 @@ function PdfPreview({ url }) {
   return (
     <Box
       sx={{
-        borderRadius: 3,
+        borderRadius: 2,
         overflow: "hidden",
-        border: "1px solid rgba(0,0,0,0.08)",
+        border: "1px solid var(--border)",
+        backgroundColor: "#ffffff",
         minHeight: 420,
       }}
     >
