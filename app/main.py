@@ -114,6 +114,10 @@ def read_root():
         return FileResponse(react_index)
     return RedirectResponse(url="/docs")
 
+@app.get("/")
+def read_root():
+    return RedirectResponse(url="/docs")
+
 @app.get("/me")
 def get_me(user: models.User = Depends(get_current_user)):
     return {"id": user.id, "username": user.username}
