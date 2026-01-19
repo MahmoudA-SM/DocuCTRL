@@ -16,6 +16,10 @@ WORKDIR $HOME/app
 
 ENV STORAGE_DIR=/tmp/storage
 
+# Download font to assets directory
+RUN mkdir -p /home/user/app/assets && \
+	curl -o /home/user/app/assets/Amiri-Regular.ttf https://github.com/google/fonts/raw/main/ofl/amiri/Amiri-Regular.ttf
+
 COPY --chown=user . $HOME/app
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
