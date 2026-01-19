@@ -85,13 +85,19 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.
     return auth.get_current_user(request, db)
 
 @app.get("/")
-def read_root():
-    # Serve React app index.html
-    react_index = os.path.join(BASE_DIR, "frontend", "build", "index.html")
-    if os.path.exists(react_index):
-        return FileResponse(react_index)
-    # Fallback to login if React build doesn't exist
-    return RedirectResponse(url="/login")
+def read_root(request: Request, db: Session = Depends(get_db)):
+    try:
+        # Check authentication using the cookie
+        auth.get_current_user(request, db)
+        # If authenticated, serve React app index.html
+        react_index = os.path.join(BASE_DIR, "frontend", "build", "index.html")
+        if os.path.exists(react_index):
+            return FileResponse(react_index)
+        # Fallback to API docs if build is missing but user is authenticated
+        return RedirectResponse(url="/docs")
+    except HTTPException:
+        # If not authenticated, redirect to login
+        return RedirectResponse(url="/login")
 
 @app.get("/me")
 def get_me(user: models.User = Depends(get_current_user)):
