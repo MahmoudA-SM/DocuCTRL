@@ -43,11 +43,45 @@ def get_db():
     finally:
         db.close()
 
-def get_current_user(db: Session) -> models.User:
-    user = db.query(models.User).order_by(models.User.id.asc()).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import HTMLResponse, JSONResponse
+from . import auth
+
+# ... existing code ...
+
+@app.get("/login", response_class=HTMLResponse)
+def login_page():
+    login_path = os.path.join(BASE_DIR, "frontend", "login.html")
+    if not os.path.exists(login_path):
+        return "Login page not found."
+    with open(login_path, "r") as f:
+        return f.read()
+
+@app.post("/token")
+async def login_for_access_token(response: RedirectResponse, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.username == form_data.username).first()
+    if not user or not user.hashed_password or not auth.verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token = auth.create_access_token(data={"sub": user.username})
+    
+    # Return JSON but also set cookie for browser access
+    content = {"access_token": access_token, "token_type": "bearer"}
+    resp = JSONResponse(content=content)
+    resp.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
+    return resp
+
+# Replace the dummy get_current_user with the real one
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.User:
+    return auth.get_current_user(request, db)
+
+@app.get("/")
+def read_root(user: models.User = Depends(get_current_user)):
+    # If authenticated, redirect to docs (or dashboard in future)
+    return RedirectResponse(url="/docs")
 
 @app.get("/me")
 def get_me(db: Session = Depends(get_db)):
