@@ -10,3 +10,6 @@ python-bidi
 python-multipart
 supabase
 gunicorn
+bcrypt
+python-jose[cryptography]
+websockets>=13.0
