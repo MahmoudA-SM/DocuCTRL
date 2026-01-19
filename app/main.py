@@ -329,7 +329,10 @@ def list_documents(project_id: int, user: models.User = Depends(get_current_user
         models.UserProjectAssignment.project_id == project_id
     ).first()
     if not assignment:
-        raise HTTPException(status_code=403, detail="\u063a\u064a\u0631 \u0645\u0635\u0631\u062d \u0644\u0643 \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0625\u0644\u0649 \u0647\u0630\u0627 \u0627\u0644\u0645\u0634\u0631\u0648\u0639")
+        raise HTTPException(
+            status_code=403,
+            detail="\u063a\u064a\u0631 \u0645\u0635\u0631\u062d \u0644\u0643 \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0625\u0644\u0649 \u0647\u0630\u0627 \u0627\u0644\u0645\u0634\u0631\u0648\u0639",
+        )
     docs = db.query(models.Document).filter(models.Document.project_id == project_id).order_by(models.Document.id.desc()).all()
 
 
