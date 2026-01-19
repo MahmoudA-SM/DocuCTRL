@@ -1,4 +1,15 @@
-FROM python:3.9
+FROM node:18 AS frontend-build
+
+WORKDIR /frontend
+
+COPY frontend/package*.json ./
+RUN npm ci
+
+COPY frontend/ ./
+RUN npm run build
+
+# Python backend
+FROM python:3.10
 
 WORKDIR /code
 
@@ -21,5 +32,8 @@ RUN mkdir -p /home/user/app/assets && \
 	curl -o /home/user/app/assets/Amiri-Regular.ttf https://github.com/google/fonts/raw/main/ofl/amiri/Amiri-Regular.ttf
 
 COPY --chown=user . $HOME/app
+
+# Copy React build from frontend stage
+COPY --from=frontend-build --chown=user /frontend/build $HOME/app/frontend/build
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]

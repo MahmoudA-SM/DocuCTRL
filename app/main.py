@@ -3,6 +3,7 @@ import shutil
 from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from . import models, database, utils
 from fastapi.responses import FileResponse, RedirectResponse
@@ -28,9 +29,14 @@ models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(title="Document Control System")
 
+# Mount static files for React frontend
+REACT_BUILD_DIR = os.path.join(BASE_DIR, "frontend", "build")
+if os.path.exists(REACT_BUILD_DIR):
+    app.mount("/static", StaticFiles(directory=os.path.join(REACT_BUILD_DIR, "static")), name="static")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://172.20.10.10:3000"],
+    allow_origins=["*"],  # Allow all origins for deployed version
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -80,7 +86,11 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.
 
 @app.get("/")
 def read_root():
-    # Redirect unauthenticated users to login
+    # Serve React app index.html
+    react_index = os.path.join(BASE_DIR, "frontend", "build", "index.html")
+    if os.path.exists(react_index):
+        return FileResponse(react_index)
+    # Fallback to login if React build doesn't exist
     return RedirectResponse(url="/login")
 
 @app.get("/me")
