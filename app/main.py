@@ -79,9 +79,9 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.
     return auth.get_current_user(request, db)
 
 @app.get("/")
-def read_root(user: models.User = Depends(get_current_user)):
-    # If authenticated, redirect to docs (or dashboard in future)
-    return RedirectResponse(url="/docs")
+def read_root():
+    # Redirect unauthenticated users to login
+    return RedirectResponse(url="/login")
 
 @app.get("/me")
 def get_me(user: models.User = Depends(get_current_user)):
