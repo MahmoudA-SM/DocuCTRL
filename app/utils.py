@@ -4,7 +4,7 @@ import segno
 import arabic_reshaper
 from bidi.algorithm import get_display
 
-from pypdf import PdfReader, PdfWriter
+from pypdf import PdfReader, PdfWriter, Transformation
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -38,8 +38,8 @@ def generate_serial(owner_code: str, year: int, seq_id: int) -> str:
 
 def _register_arabic_font() -> str:
 
-
-    font_path = os.path.join("assets", "Amiri-Regular.ttf")
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    font_path = os.path.join(base_dir, "assets", "Amiri-Regular.ttf")
     font_name = "Amiri"
 
     if os.path.exists(font_path):
@@ -51,6 +51,22 @@ def _register_arabic_font() -> str:
         return font_name
 
     return "Helvetica"
+
+STAMP_PADDING = 24  # points (~0.33 inch)
+STAMP_QR_SIZE = 90  # points
+STAMP_LINE_GAP = 12
+STAMP_FONT_SIZE = 10
+STAMP_TEXT_LINES = 3
+STAMP_TEXT_GAP = 10
+STAMP_HEADER_HEIGHT = (
+    STAMP_PADDING
+    + STAMP_QR_SIZE
+    + STAMP_TEXT_GAP
+    + (STAMP_TEXT_LINES - 1) * STAMP_LINE_GAP
+    + STAMP_FONT_SIZE
+    + STAMP_PADDING
+)
+
 
 def _make_watermark_pdf(
     page_width: float,
@@ -65,10 +81,10 @@ def _make_watermark_pdf(
     c = canvas.Canvas(packet, pagesize=(page_width, page_height))
 
 
-    padding = 24  # points (~0.33 inch)
-    qr_size = 90  # points
-    line_gap = 12
-    font_size = 10
+    padding = STAMP_PADDING
+    qr_size = STAMP_QR_SIZE
+    line_gap = STAMP_LINE_GAP
+    font_size = STAMP_FONT_SIZE
 
 
     stamp_right = page_width - padding
@@ -85,7 +101,7 @@ def _make_watermark_pdf(
 
 
     text_right = stamp_right
-    text_y = qr_y - 10
+    text_y = qr_y - STAMP_TEXT_GAP
 
 
     font_name = _register_arabic_font()
@@ -120,11 +136,12 @@ def stamp_pdf(
     first_page = reader.pages[0]
     page_width = float(first_page.mediabox.width)
     page_height = float(first_page.mediabox.height)
+    header_height = STAMP_HEADER_HEIGHT
 
     qr_png = create_qr_buffer(serial)
     watermark_stream = _make_watermark_pdf(
         page_width,
-        page_height,
+        page_height + header_height,
         serial,
         project_name,
         owner_company_name,
@@ -138,8 +155,14 @@ def stamp_pdf(
 
     for idx, page in enumerate(reader.pages):
         if idx == 0:
-            page.merge_page(watermark_page)
-        writer.add_page(page)
+            new_page = writer.add_blank_page(
+                width=page_width,
+                height=page_height + header_height,
+            )
+            new_page.merge_page(page)
+            new_page.merge_page(watermark_page)
+        else:
+            writer.add_page(page)
 
     with open(output_pdf_path, "wb") as f:
         writer.write(f)

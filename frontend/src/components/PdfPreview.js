@@ -18,7 +18,7 @@ function PdfPreview({ url }) {
         }}
       >
         <Typography variant="body2">
-          معاينة ملف PDF ستظهر هنا بعد الرفع
+          ستظهر معاينة ملف PDF هنا بعد اكتمال الرفع
         </Typography>
       </Box>
     );

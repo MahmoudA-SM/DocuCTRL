@@ -17,7 +17,7 @@ function SuccessPanel({ serial, downloadUrl, verifyUrl, onCopy }) {
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         <CheckCircleIcon color="success" />
-        <Typography variant="h6">تم رفع المستند بنجاح</Typography>
+        <Typography variant="h6">تم ختم المستند بنجاح</Typography>
       </Box>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
         <Chip label={`الرقم التسلسلي: ${serial}`} color="secondary" />

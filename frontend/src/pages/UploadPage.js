@@ -20,9 +20,9 @@ import {
 } from "../services/api";
 
 const stageText = {
-  uploading: "جاري رفع الملف",
-  stamping: "جاري ختم المستند",
-  finalizing: "جاري تجهيز الروابط",
+  uploading: "جارٍ رفع الملف",
+  stamping: "جارٍ ختم الملف",
+  finalizing: "جارٍ إنهاء المعالجة",
 };
 
 function UploadPage() {
@@ -57,7 +57,7 @@ function UploadPage() {
           setSelectedProjectId(projectsData[0].id);
         }
       } catch (error) {
-        setInitialError("تعذر تحميل بيانات المستخدم أو المشاريع.");
+        setInitialError("تعذر تحميل البيانات من الخادم.");
       }
     };
     load();
@@ -71,7 +71,7 @@ function UploadPage() {
   const handleFileChange = (event) => {
     const selected = event.target.files && event.target.files[0];
     if (selected && selected.type !== "application/pdf") {
-      setUploadError("يرجى اختيار ملف PDF صالح.");
+      setUploadError("يرجى اختيار ملف PDF فقط.");
       event.target.value = "";
       return;
     }
@@ -82,7 +82,7 @@ function UploadPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!file || !selectedProjectId || !me) {
-      setUploadError("يرجى اختيار المشروع وملف PDF قبل المتابعة.");
+      setUploadError("اختر مشروعًا وملف PDF قبل الإرسال.");
       return;
     }
 
@@ -113,9 +113,9 @@ function UploadPage() {
       clearTimers();
       setUploadStage("error");
       if (error.response && error.response.status === 403) {
-        setUploadError("غير مصرح لك بالرفع لهذا المشروع.");
+        setUploadError("غير مسموح لك بالرفع لهذا المشروع.");
       } else {
-        setUploadError("حدث خطأ أثناء رفع الملف. حاول مرة أخرى.");
+        setUploadError("حدث خطأ أثناء الرفع. حاول مرة أخرى.");
       }
     } finally {
       setLoading(false);
@@ -143,7 +143,7 @@ function UploadPage() {
             رفع مستند جديد
           </Typography>
           <Typography color="text.secondary">
-            اختر المشروع وارفع ملف PDF ليتم ختمه والتحقق منه تلقائيا.
+            ارفع ملف PDF ليتم ختمه وربطه بالمشروع.
           </Typography>
         </CardContent>
       </Card>
@@ -152,7 +152,7 @@ function UploadPage() {
         <Grid item xs={12} md={5}>
           <Card sx={{ borderRadius: 2, border: "1px solid var(--border)" }}>
             <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <Typography variant="h6">بيانات الرفع</Typography>
+              <Typography variant="h6">تفاصيل الرفع</Typography>
               {selectedProject ? (
                 <Typography variant="body2" color="text.secondary">
                   الجهة المالكة: {selectedProject.owner_company_name || "غير محدد"}
@@ -179,7 +179,7 @@ function UploadPage() {
                   }}
                 >
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    {stageText[uploadStage] || "جاري المعالجة"}
+                    {stageText[uploadStage] || "جارٍ المعالجة..."}
                   </Typography>
                   <ProgressIndicator stage={uploadStage} />
                 </Box>
@@ -201,10 +201,10 @@ function UploadPage() {
               <Card sx={{ borderRadius: 2, border: "1px solid var(--border)" }}>
                 <CardContent>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                    معلومات المستند
+                    لا توجد نتيجة بعد
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    بعد اكتمال الرفع ستظهر هنا تفاصيل المستند وروابط التحميل.
+                    ستظهر تفاصيل المستند المختوم هنا بعد اكتمال الرفع.
                   </Typography>
                 </CardContent>
               </Card>

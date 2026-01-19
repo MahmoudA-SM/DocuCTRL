@@ -8,3 +8,5 @@ segno
 arabic-reshaper
 python-bidi
 python-multipart
+supabase
+gunicorn

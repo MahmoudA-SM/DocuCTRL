@@ -4,8 +4,10 @@ import { Box, Container, Typography, Button, IconButton } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import UploadFileOutlinedIcon from "@mui/icons-material/UploadFileOutlined";
 import FolderOpenOutlinedIcon from "@mui/icons-material/FolderOpenOutlined";
+import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
 import UploadPage from "./pages/UploadPage";
 import DocumentListPage from "./pages/DocumentListPage";
+import VerifyPage from "./pages/VerifyPage";
 
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -40,14 +42,14 @@ function App() {
             <IconButton
               size="small"
               onClick={() => setSidebarCollapsed((prev) => !prev)}
-              aria-label={sidebarCollapsed ? "توسيع القائمة" : "طي القائمة"}
+              aria-label={sidebarCollapsed ? "توسيع الشريط الجانبي" : "طي الشريط الجانبي"}
             >
               <MenuIcon fontSize="small" />
             </IconButton>
           </Box>
           {!sidebarCollapsed ? (
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              منصة موثوقة لختم الوثائق والتحقق منها
+              نظام التحكم في المستندات لختم ملفات PDF وتتبعها.
             </Typography>
           ) : null}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
@@ -57,8 +59,8 @@ function App() {
               variant="contained"
               fullWidth
               startIcon={<UploadFileOutlinedIcon />}
-              title={sidebarCollapsed ? "رفع مستند جديد" : undefined}
-              aria-label={sidebarCollapsed ? "رفع مستند جديد" : undefined}
+              title={sidebarCollapsed ? "رفع مستند" : undefined}
+              aria-label={sidebarCollapsed ? "رفع مستند" : undefined}
               sx={{
                 justifyContent: sidebarCollapsed ? "center" : "flex-start",
                 px: sidebarCollapsed ? 1 : 2,
@@ -70,7 +72,7 @@ function App() {
                 },
               }}
             >
-              {sidebarCollapsed ? "" : "رفع مستند جديد"}
+              {sidebarCollapsed ? "" : "رفع مستند"}
             </Button>
             <Button
               component={Link}
@@ -78,8 +80,8 @@ function App() {
               variant="outlined"
               fullWidth
               startIcon={<FolderOpenOutlinedIcon />}
-              title={sidebarCollapsed ? "عرض المستندات" : undefined}
-              aria-label={sidebarCollapsed ? "عرض المستندات" : undefined}
+              title={sidebarCollapsed ? "مستندات المشاريع" : undefined}
+              aria-label={sidebarCollapsed ? "مستندات المشاريع" : undefined}
               sx={{
                 justifyContent: sidebarCollapsed ? "center" : "flex-start",
                 px: sidebarCollapsed ? 1 : 2,
@@ -91,7 +93,28 @@ function App() {
                 },
               }}
             >
-              {sidebarCollapsed ? "" : "عرض المستندات"}
+              {sidebarCollapsed ? "" : "مستندات المشاريع"}
+            </Button>
+            <Button
+              component={Link}
+              to="/verify"
+              variant="text"
+              fullWidth
+              startIcon={<QrCodeScannerIcon />}
+              title={sidebarCollapsed ? "تحقق من مستند" : undefined}
+              aria-label={sidebarCollapsed ? "تحقق من مستند" : undefined}
+              sx={{
+                justifyContent: sidebarCollapsed ? "center" : "flex-start",
+                px: sidebarCollapsed ? 1 : 2,
+                minWidth: sidebarCollapsed ? 44 : "auto",
+                height: sidebarCollapsed ? 44 : "auto",
+                borderRadius: sidebarCollapsed ? 2.5 : 1.5,
+                "& .MuiButton-startIcon": {
+                  margin: 0,
+                },
+              }}
+            >
+              {sidebarCollapsed ? "" : "تحقق من مستند"}
             </Button>
           </Box>
         </Box>
@@ -107,15 +130,20 @@ function App() {
               <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <Box>
                   <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                    لوحة التحكم
+                    إدارة المستندات
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    إدارة رفع المستندات والتحقق منها
+                    تابع الرفع والتحقق في مكان واحد.
                   </Typography>
                 </Box>
-                <Button variant="contained" href="/upload">
-                  رفع مستند
-                </Button>
+                <Box sx={{ display: "flex", gap: 1 }}>
+                  <Button variant="outlined" href="/verify">
+                    تحقق من مستند
+                  </Button>
+                  <Button variant="contained" href="/upload">
+                    رفع مستند
+                  </Button>
+                </Box>
               </Box>
             </Container>
           </Box>
@@ -125,6 +153,7 @@ function App() {
               <Route path="/" element={<Navigate to="/upload" replace />} />
               <Route path="/upload" element={<UploadPage />} />
               <Route path="/projects/:projectId/documents" element={<DocumentListPage />} />
+              <Route path="/verify" element={<VerifyPage />} />
             </Routes>
           </Container>
         </Box>

@@ -43,7 +43,7 @@ function DocumentListPage() {
         setProjects(projectList);
       } catch (err) {
         if (err.response && err.response.status === 403) {
-          setError("غير مصرح لك بالوصول إلى هذا المشروع.");
+          setError("غير مسموح لك بعرض مستندات هذا المشروع.");
         } else {
           setError("تعذر تحميل المستندات.");
         }
@@ -67,7 +67,7 @@ function DocumentListPage() {
             مستندات {projectName}
           </Typography>
           <Typography color="text.secondary">
-            عرض المستندات المختومة مع إمكانية التحميل.
+            جميع المستندات المرتبطة بهذا المشروع.
           </Typography>
           <Button component={Link} to="/upload" variant="contained" sx={{ alignSelf: "flex-start" }}>
             رفع مستند جديد
@@ -82,7 +82,7 @@ function DocumentListPage() {
           {loading ? (
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               <CircularProgress size={22} />
-              <Typography color="text.secondary">جاري تحميل المستندات...</Typography>
+              <Typography color="text.secondary">جارٍ تحميل المستندات...</Typography>
             </Box>
           ) : (
             <Table>
@@ -118,7 +118,7 @@ function DocumentListPage() {
                           href={buildDownloadUrl(doc.id)}
                           target="_blank"
                         >
-                          تحميل
+                          تنزيل
                         </Button>
                       </TableCell>
                     </TableRow>

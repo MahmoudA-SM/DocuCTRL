@@ -5,10 +5,24 @@ from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, sta
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from . import models, database, utils
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
+from supabase import create_client, Client
 
 
-os.makedirs("storage", exist_ok=True)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Supabase Configuration
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "docuctrl-files")
+
+supabase: Client = None
+if SUPABASE_URL and SUPABASE_KEY:
+    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Use /tmp for ephemeral storage on cloud configurations
+STORAGE_DIR = os.getenv("STORAGE_DIR", os.path.join(BASE_DIR, "storage"))
+os.makedirs(STORAGE_DIR, exist_ok=True)
 
 models.Base.metadata.create_all(bind=database.engine)
 
@@ -16,7 +30,7 @@ app = FastAPI(title="Document Control System")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://172.20.10.10:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -97,7 +111,7 @@ async def upload_document(
         raise HTTPException(status_code=404, detail="Owner Company not found")
 
 
-    os.makedirs("storage", exist_ok=True)
+    os.makedirs(STORAGE_DIR, exist_ok=True)
     safe_name = os.path.basename(file.filename)
 
 
@@ -116,8 +130,8 @@ async def upload_document(
     new_doc.serial = serial
 
 
-    input_path = f"storage/temp_{new_doc.id}_{safe_name}"
-    output_path = f"storage/{serial}_{safe_name}"
+    input_path = os.path.join(STORAGE_DIR, f"temp_{new_doc.id}_{safe_name}")
+    output_path = os.path.join(STORAGE_DIR, f"{serial}_{safe_name}")
 
     try:
         with open(input_path, "wb") as buffer:
@@ -125,6 +139,12 @@ async def upload_document(
 
         utils.stamp_pdf(input_path, output_path, serial, project.name, owner.name)
 
+        # Upload to Supabase
+        if supabase:
+            with open(output_path, "rb") as f:
+                destination = f"{serial}_{safe_name}"
+                # content_type="application/pdf"
+                supabase.storage.from_(SUPABASE_BUCKET).upload(destination, f, {"content-type": "application/pdf"})
 
         db.commit()
 
@@ -141,10 +161,12 @@ async def upload_document(
         raise HTTPException(status_code=500, detail=f"Upload/stamp failed: {str(e)}")
 
     finally:
-
+        # Cleanup
         try:
             if os.path.exists(input_path):
                 os.remove(input_path)
+            if supabase and os.path.exists(output_path):
+                 os.remove(output_path)
         except Exception:
             pass
 
@@ -165,7 +187,7 @@ async def upload_document(
 
 
 @app.get("/verify/{serial}")
-def verify_document(serial: str, db: Session = Depends(get_db)):
+def verify_document(serial: str, request: Request, db: Session = Depends(get_db)):
     doc = db.query(models.Document).filter(
         models.Document.serial == serial
     ).first()
@@ -176,6 +198,22 @@ def verify_document(serial: str, db: Session = Depends(get_db)):
             "message": "Document not found"
         }
 
+    
+    base_url = str(request.base_url).rstrip("/") if request else ""
+    download_url = f"{base_url}/documents/{doc.id}/download"
+
+    # Check existence
+    exists = False
+    if supabase:
+        try:
+            res = supabase.storage.from_(SUPABASE_BUCKET).list(path="", options={"search": f"{doc.serial}_{doc.filename}"})
+            exists = len(res) > 0 if res else False
+        except:
+            exists = False
+    else:
+        file_path = os.path.join(STORAGE_DIR, f"{doc.serial}_{doc.filename}")
+        exists = os.path.exists(file_path)
+
     return {
         "valid": True,
         "serial": doc.serial,
@@ -183,6 +221,8 @@ def verify_document(serial: str, db: Session = Depends(get_db)):
         "filename": doc.filename,
         "project_id": doc.project_id,
         "owner_company_id": doc.owner_company_id,
+        "file_exists": exists,
+        "download_url": download_url,
     }
 
 
@@ -215,16 +255,21 @@ def download_document(document_id: int, db: Session = Depends(get_db)):
     if not doc or not doc.serial:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    # same naming convention used in upload
-    file_path = f"storage/{doc.serial}_{doc.filename}"
+    filename = f"{doc.serial}_{doc.filename}"
+    
+    if supabase:
+        # Redirect to public Supabase URL
+        # Assumption: Bucket is PUBLIC
+        public_url = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(filename)
+        return RedirectResponse(url=public_url)
+    else:
+        file_path = os.path.join(STORAGE_DIR, filename)
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="Stamped file missing on disk")
 
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Stamped file missing on disk")
-
-    # download_name is what the browser saves as
-    return FileResponse(
-        path=file_path,
-        media_type="application/pdf",
-        filename=f"{doc.serial}_{doc.filename}",
-        headers={"Content-Disposition": f'inline; filename="{doc.serial}_{doc.filename}"'}
-    )
+        return FileResponse(
+            path=file_path,
+            media_type="application/pdf",
+            filename=filename,
+            headers={"Content-Disposition": f'inline; filename="{filename}"'}
+        )

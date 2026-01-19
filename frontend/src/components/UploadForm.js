@@ -59,10 +59,10 @@ function UploadForm({
         }}
       >
         <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-          اختر ملف PDF
+          ارفع ملف PDF
         </Typography>
         <Button variant="outlined" component="label" fullWidth>
-          اختيار ملف PDF
+          اختر ملف PDF
           <input
             hidden
             type="file"

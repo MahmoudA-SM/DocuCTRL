@@ -30,6 +30,11 @@ export const getProjectDocuments = async (projectId) => {
   return response.data;
 };
 
+export const verifySerial = async (serial) => {
+  const response = await api.get(`/verify/${serial}`);
+  return response.data;
+};
+
 export const buildDownloadUrl = (documentId) =>
   `${api.defaults.baseURL || ""}/documents/${documentId}/download`;
 
