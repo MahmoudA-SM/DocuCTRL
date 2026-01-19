@@ -4,7 +4,39 @@ const api = axios.create({
   baseURL: process.env.REACT_APP_API_BASE_URL || "",
 });
 
-console.log("API BASE:", process.env.REACT_APP_API_BASE_URL);
+const getStoredToken = () => {
+  try {
+    return localStorage.getItem("access_token");
+  } catch (err) {
+    return null;
+  }
+};
+
+api.interceptors.request.use((config) => {
+  const token = getStoredToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    if (status === 401) {
+      try {
+        localStorage.removeItem("access_token");
+      } catch (err) {
+        // ignore storage errors
+      }
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const getMe = async () => {
   const response = await api.get("/me");
@@ -35,10 +67,13 @@ export const verifySerial = async (serial) => {
   return response.data;
 };
 
-export const buildDownloadUrl = (documentId) =>
-  `${api.defaults.baseURL || ""}/documents/${documentId}/download`;
+export const downloadDocument = async (documentId) => {
+  const response = await api.get(`/documents/${documentId}/download`, {
+    responseType: "blob",
+  });
+  return response.data;
+};
 
-export const buildVerifyUrl = (serial) =>
-  `${api.defaults.baseURL || ""}/verify/${serial}`;
+export const buildVerifyPageUrl = (serial) => `/verify?serial=${encodeURIComponent(serial)}`;
 
 export default api;

@@ -15,8 +15,8 @@ import {
   getMe,
   getMyProjects,
   uploadDocument,
-  buildDownloadUrl,
-  buildVerifyUrl,
+  downloadDocument,
+  buildVerifyPageUrl,
 } from "../services/api";
 
 const stageText = {
@@ -35,6 +35,7 @@ function UploadPage() {
   const [uploadResult, setUploadResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [initialError, setInitialError] = useState("");
+  const [downloadUrl, setDownloadUrl] = useState("");
   const timersRef = useRef([]);
 
   const selectedProject = useMemo(
@@ -63,6 +64,14 @@ function UploadPage() {
     load();
     return () => clearTimers();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (downloadUrl) {
+        URL.revokeObjectURL(downloadUrl);
+      }
+    };
+  }, [downloadUrl]);
 
   const handleProjectChange = (event) => {
     setSelectedProjectId(event.target.value);
@@ -103,10 +112,18 @@ function UploadPage() {
       const result = await uploadDocument(formData);
       clearTimers();
       setUploadStage("done");
+      let blobUrl = "";
+      try {
+        const blob = await downloadDocument(result.document_id);
+        blobUrl = URL.createObjectURL(blob);
+        setDownloadUrl(blobUrl);
+      } catch (err) {
+        setDownloadUrl("");
+      }
       setUploadResult({
         serial: result.serial,
-        downloadUrl: result.download_url || buildDownloadUrl(result.document_id),
-        verifyUrl: result.verify_url || buildVerifyUrl(result.serial),
+        downloadUrl: blobUrl,
+        verifyUrl: buildVerifyPageUrl(result.serial),
         projectId: result.project_id,
       });
     } catch (error) {

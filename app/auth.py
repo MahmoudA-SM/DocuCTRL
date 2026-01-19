@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Optional
+import os
 from jose import JWTError, jwt
 import bcrypt
 from fastapi import Depends, HTTPException, status, Request
@@ -8,9 +9,12 @@ from sqlalchemy.orm import Session
 from . import models, database
 
 # Constants
-SECRET_KEY = "CHANGE_THIS_IN_PRODUCTION_TO_A_REAL_SECRET_KEY"
+SECRET_KEY = os.getenv("JWT_SECRET")
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET must be set for authentication to work safely.")
+
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 1 day
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", str(60 * 24)))
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -25,7 +29,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -39,7 +43,12 @@ def get_db():
 
 # Dependency for protecting routes
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.User:
-    token = request.cookies.get("access_token")
+    auth_header = request.headers.get("Authorization", "")
+    token = None
+    if auth_header.startswith("Bearer "):
+        token = auth_header.split(" ", 1)[1].strip()
+    if not token:
+        token = request.cookies.get("access_token")
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

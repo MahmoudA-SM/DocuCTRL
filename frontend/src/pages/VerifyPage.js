@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -10,7 +11,7 @@ import {
 } from "@mui/material";
 import jsQR from "jsqr";
 import PdfPreview from "../components/PdfPreview";
-import { buildDownloadUrl, verifySerial } from "../services/api";
+import { downloadDocument, verifySerial } from "../services/api";
 
 function VerifyPage() {
   const videoRef = useRef(null);
@@ -19,11 +20,20 @@ function VerifyPage() {
   const detectorRef = useRef(null);
   const useJsQrRef = useRef(false);
   const rafRef = useRef(null);
+  const [searchParams] = useSearchParams();
 
   const [serial, setSerial] = useState("");
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   const stopCamera = () => {
     if (rafRef.current) {
@@ -70,7 +80,8 @@ function VerifyPage() {
         setError("الملف غير موجود في التخزين.");
         return;
       }
-      const url = result.download_url || buildDownloadUrl(result.document_id);
+      const blob = await downloadDocument(result.document_id);
+      const url = URL.createObjectURL(blob);
       setPreviewUrl(url);
       setStatus("verified");
     } catch (err) {
@@ -78,6 +89,14 @@ function VerifyPage() {
       setError("تعذر التحقق من المستند.");
     }
   };
+
+  useEffect(() => {
+    const initialSerial = searchParams.get("serial");
+    if (initialSerial) {
+      setSerial(initialSerial);
+      handleVerify(initialSerial);
+    }
+  }, [searchParams]);
 
   const startCamera = async () => {
     setError("");

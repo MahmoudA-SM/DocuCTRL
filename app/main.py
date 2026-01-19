@@ -1,6 +1,6 @@
 import os
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from . import models, database, utils
 from fastapi.responses import FileResponse, RedirectResponse
 from supabase import create_client, Client
+from pydantic import BaseModel, constr
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -16,6 +17,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "docuctrl-files")
+SUPABASE_SIGNED_URL_TTL = int(os.getenv("SUPABASE_SIGNED_URL_TTL", "300"))
 
 supabase: Client = None
 if SUPABASE_URL and SUPABASE_KEY:
@@ -34,9 +36,15 @@ REACT_BUILD_DIR = os.path.join(BASE_DIR, "frontend", "build")
 if os.path.exists(REACT_BUILD_DIR):
     app.mount("/static", StaticFiles(directory=os.path.join(REACT_BUILD_DIR, "static")), name="static")
 
+def _get_allowed_origins() -> list[str]:
+    origins = os.getenv("ALLOWED_ORIGINS")
+    if not origins:
+        return ["*"]
+    return [origin.strip() for origin in origins.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for deployed version
+    allow_origins=_get_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -72,12 +80,27 @@ async def login_for_access_token(response: RedirectResponse, form_data: OAuth2Pa
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = auth.create_access_token(data={"sub": user.username})
+    access_token = auth.create_access_token(
+        data={"sub": user.username},
+        expires_delta=timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
     
     # Return JSON but also set cookie for browser access
     content = {"access_token": access_token, "token_type": "bearer"}
     resp = JSONResponse(content=content)
-    resp.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
+    cookie_secure = os.getenv("COOKIE_SECURE", "true").lower() == "true"
+    cookie_samesite = os.getenv("COOKIE_SAMESITE", "lax").lower()
+    cookie_domain = os.getenv("COOKIE_DOMAIN")
+    resp.set_cookie(
+        key="access_token",
+        value=f"Bearer {access_token}",
+        httponly=True,
+        secure=cookie_secure,
+        samesite=cookie_samesite,
+        max_age=auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        domain=cookie_domain,
+        path="/",
+    )
     return resp
 
 # Replace the dummy get_current_user with the real one
@@ -85,22 +108,32 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.
     return auth.get_current_user(request, db)
 
 @app.get("/")
-def read_root(request: Request, db: Session = Depends(get_db)):
-    try:
-        # Check authentication using the cookie
-        auth.get_current_user(request, db)
-        # If authenticated, serve React app index.html
-        react_index = os.path.join(BASE_DIR, "frontend", "build", "index.html")
-        if os.path.exists(react_index):
-            return FileResponse(react_index)
-        # Fallback to API docs if build is missing but user is authenticated
-        return RedirectResponse(url="/docs")
-    except HTTPException:
-        # If not authenticated, redirect to login
-        return RedirectResponse(url="/login")
+def read_root():
+    react_index = os.path.join(BASE_DIR, "frontend", "build", "index.html")
+    if os.path.exists(react_index):
+        return FileResponse(react_index)
+    return RedirectResponse(url="/docs")
 
 @app.get("/me")
 def get_me(user: models.User = Depends(get_current_user)):
+    return {"id": user.id, "username": user.username}
+
+
+class UserCreate(BaseModel):
+    username: constr(strip_whitespace=True, min_length=3, max_length=64)
+    password: constr(min_length=8, max_length=128)
+
+
+@app.post("/register", status_code=status.HTTP_201_CREATED)
+def register_user(payload: UserCreate, db: Session = Depends(get_db)):
+    existing = db.query(models.User).filter(models.User.username == payload.username).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    hashed_password = auth.get_password_hash(payload.password)
+    user = models.User(username=payload.username, hashed_password=hashed_password)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
     return {"id": user.id, "username": user.username}
 
 @app.get("/me/projects")
@@ -235,7 +268,12 @@ async def upload_document(
 
 
 @app.get("/verify/{serial}")
-def verify_document(serial: str, request: Request, db: Session = Depends(get_db)):
+def verify_document(
+    serial: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     doc = db.query(models.Document).filter(
         models.Document.serial == serial
     ).first()
@@ -246,7 +284,13 @@ def verify_document(serial: str, request: Request, db: Session = Depends(get_db)
             "message": "Document not found"
         }
 
-    
+    assignment = db.query(models.UserProjectAssignment).filter(
+        models.UserProjectAssignment.user_id == current_user.id,
+        models.UserProjectAssignment.project_id == doc.project_id,
+    ).first()
+    if not assignment:
+        raise HTTPException(status_code=403, detail="Not authorized for this document")
+
     base_url = str(request.base_url).rstrip("/") if request else ""
     download_url = f"{base_url}/documents/{doc.id}/download"
 
@@ -297,18 +341,39 @@ def list_documents(project_id: int, user: models.User = Depends(get_current_user
 
 
 @app.get("/documents/{document_id}/download")
-def download_document(document_id: int, db: Session = Depends(get_db)):
+def download_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     doc = db.query(models.Document).filter(models.Document.id == document_id).first()
     if not doc or not doc.serial:
         raise HTTPException(status_code=404, detail="Document not found")
 
+    assignment = db.query(models.UserProjectAssignment).filter(
+        models.UserProjectAssignment.user_id == current_user.id,
+        models.UserProjectAssignment.project_id == doc.project_id,
+    ).first()
+    if not assignment:
+        raise HTTPException(status_code=403, detail="Not authorized for this document")
+
     filename = f"{doc.serial}_{doc.filename}"
     
     if supabase:
-        # Redirect to public Supabase URL
-        # Assumption: Bucket is PUBLIC
-        public_url = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(filename)
-        return RedirectResponse(url=public_url)
+        try:
+            res = supabase.storage.from_(SUPABASE_BUCKET).create_signed_url(
+                filename,
+                SUPABASE_SIGNED_URL_TTL,
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to create signed URL: {str(e)}")
+
+        signed_url = None
+        if isinstance(res, dict):
+            signed_url = res.get("signedURL") or res.get("signedUrl") or res.get("signed_url")
+        if not signed_url:
+            raise HTTPException(status_code=500, detail="Signed URL generation failed")
+        return RedirectResponse(url=signed_url)
     else:
         file_path = os.path.join(STORAGE_DIR, filename)
         if not os.path.exists(file_path):

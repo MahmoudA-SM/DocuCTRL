@@ -108,6 +108,13 @@
                 });
 
                 if (response.ok) {
+                    const data = await response.json();
+                    if (!data || !data.access_token) {
+                        errorMsg.textContent = "Login failed";
+                        errorMsg.style.display = 'block';
+                        return;
+                    }
+                    localStorage.setItem("access_token", data.access_token);
                     window.location.href = '/'; // Redirect to React app
                 } else {
                     errorMsg.style.display = 'block';

@@ -15,9 +15,9 @@ import {
   Typography,
 } from "@mui/material";
 import {
-  buildDownloadUrl,
   getMyProjects,
   getProjectDocuments,
+  downloadDocument,
 } from "../services/api";
 
 function DocumentListPage() {
@@ -26,6 +26,7 @@ function DocumentListPage() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [downloadingId, setDownloadingId] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -58,6 +59,21 @@ function DocumentListPage() {
     const project = projects.find((item) => String(item.id) === String(projectId));
     return project ? project.name : `مشروع رقم ${projectId}`;
   }, [projects, projectId]);
+
+  const handleDownload = async (documentId) => {
+    setDownloadingId(documentId);
+    setError("");
+    try {
+      const blob = await downloadDocument(documentId);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener");
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (err) {
+      setError("???? ??? ????? ?????.");
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
@@ -115,8 +131,8 @@ function DocumentListPage() {
                         <Button
                           variant="contained"
                           size="small"
-                          href={buildDownloadUrl(doc.id)}
-                          target="_blank"
+                          onClick={() => handleDownload(doc.id)}
+                          disabled={downloadingId === doc.id}
                         >
                           تنزيل
                         </Button>
