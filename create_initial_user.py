@@ -1,11 +1,11 @@
 import os
 import sys
 from getpass import getpass
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app import database,models, auth
 
-# Ensure we can import app modules
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# ... existing code ...
 
 def create_admin():
     print("--- Create Initial Admin User ---")
@@ -13,7 +13,7 @@ def create_admin():
     # Check database connection
     try:
         db = database.SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
     except Exception as e:
         print(f"Error connecting to database: {e}")
         print("Make sure DATABASE_URL is set in your environment (or .env file)")

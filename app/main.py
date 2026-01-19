@@ -84,13 +84,11 @@ def read_root(user: models.User = Depends(get_current_user)):
     return RedirectResponse(url="/docs")
 
 @app.get("/me")
-def get_me(db: Session = Depends(get_db)):
-    user = get_current_user(db)
+def get_me(user: models.User = Depends(get_current_user)):
     return {"id": user.id, "username": user.username}
 
 @app.get("/me/projects")
-def get_my_projects(db: Session = Depends(get_db)):
-    user = get_current_user(db)
+def get_my_projects(user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     projects = (
         db.query(models.Project)
         .join(models.UserProjectAssignment, models.UserProjectAssignment.project_id == models.Project.id)
@@ -114,14 +112,14 @@ async def upload_document(
     project_id: int = Form(...),
     owner_company_id: int | None = Form(None),
     user_id: int | None = Form(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
     if file.content_type != "application/pdf" or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted")
 
     if user_id is None:
-        user = get_current_user(db)
-        user_id = user.id
+        user_id = current_user.id
     assignment = db.query(models.UserProjectAssignment).filter(
         models.UserProjectAssignment.user_id == user_id,
         models.UserProjectAssignment.project_id == project_id
@@ -261,8 +259,7 @@ def verify_document(serial: str, request: Request, db: Session = Depends(get_db)
 
 
 @app.get("/projects/{project_id}/documents")
-def list_documents(project_id: int, db: Session = Depends(get_db)):
-    user = get_current_user(db)
+def list_documents(project_id: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     assignment = db.query(models.UserProjectAssignment).filter(
         models.UserProjectAssignment.user_id == user.id,
         models.UserProjectAssignment.project_id == project_id
