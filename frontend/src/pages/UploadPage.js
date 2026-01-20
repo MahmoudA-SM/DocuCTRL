@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Card,
@@ -22,7 +22,7 @@ import {
 const stageText = {
   uploading: "جارٍ رفع الملف",
   stamping: "جارٍ ختم الملف",
-  finalizing: "جارٍ إنهاء المعالجة",
+  finalizing: "جارٍ إنهاء العملية",
 };
 
 function UploadPage() {
@@ -80,7 +80,7 @@ function UploadPage() {
   const handleFileChange = (event) => {
     const selected = event.target.files && event.target.files[0];
     if (selected && selected.type !== "application/pdf") {
-      setUploadError("يرجى اختيار ملف PDF فقط.");
+      setUploadError("يسمح فقط بملفات PDF.");
       event.target.value = "";
       return;
     }
@@ -91,7 +91,7 @@ function UploadPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!file || !selectedProjectId || !me) {
-      setUploadError("اختر مشروعًا وملف PDF قبل الإرسال.");
+      setUploadError("يرجى اختيار ملف PDF ومشروع.");
       return;
     }
 
@@ -130,9 +130,9 @@ function UploadPage() {
       clearTimers();
       setUploadStage("error");
       if (error.response && error.response.status === 403) {
-        setUploadError("غير مسموح لك بالرفع لهذا المشروع.");
+        setUploadError("ليس لديك صلاحية لرفع المستند لهذا المشروع.");
       } else {
-        setUploadError("حدث خطأ أثناء الرفع. حاول مرة أخرى.");
+        setUploadError("تعذر رفع المستند. حاول مرة أخرى.");
       }
     } finally {
       setLoading(false);
@@ -146,7 +146,7 @@ function UploadPage() {
     try {
       await navigator.clipboard.writeText(uploadResult.serial);
     } catch (error) {
-      setUploadError("تعذر نسخ الرقم التسلسلي.");
+      setUploadError("تعذر نسخ الرقم إلى الحافظة.");
     }
   };
 
@@ -160,7 +160,7 @@ function UploadPage() {
             رفع مستند جديد
           </Typography>
           <Typography color="text.secondary">
-            ارفع ملف PDF ليتم ختمه وربطه بالمشروع.
+            ارفع ملف PDF ليتم ختمه وإصداره.
           </Typography>
         </CardContent>
       </Card>
@@ -169,7 +169,7 @@ function UploadPage() {
         <Grid item xs={12} md={5}>
           <Card sx={{ borderRadius: 2, border: "1px solid var(--border)" }}>
             <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <Typography variant="h6">تفاصيل الرفع</Typography>
+              <Typography variant="h6">بيانات الرفع</Typography>
               {selectedProject ? (
                 <Typography variant="body2" color="text.secondary">
                   الجهة المالكة: {selectedProject.owner_company_name || "غير محدد"}
@@ -221,7 +221,7 @@ function UploadPage() {
                     لا توجد نتيجة بعد
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    ستظهر تفاصيل المستند المختوم هنا بعد اكتمال الرفع.
+                    ستظهر روابط التحقق والتنزيل بعد اكتمال الرفع.
                   </Typography>
                 </CardContent>
               </Card>

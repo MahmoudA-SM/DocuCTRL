@@ -1,9 +1,9 @@
-﻿import { Box, CircularProgress, Typography } from "@mui/material";
+import { Box, CircularProgress, Typography } from "@mui/material";
 
 const labels = {
   uploading: "جارٍ رفع الملف",
   stamping: "جارٍ ختم الملف",
-  finalizing: "جارٍ إنهاء المعالجة",
+  finalizing: "جارٍ إنهاء العملية",
 };
 
 function ProgressIndicator({ stage }) {

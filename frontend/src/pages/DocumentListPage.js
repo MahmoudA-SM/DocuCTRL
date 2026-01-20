@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   Alert,
@@ -44,7 +44,7 @@ function DocumentListPage() {
         setProjects(projectList);
       } catch (err) {
         if (err.response && err.response.status === 403) {
-          setError("غير مسموح لك بعرض مستندات هذا المشروع.");
+          setError("ليس لديك صلاحية لعرض مستندات هذا المشروع.");
         } else {
           setError("تعذر تحميل المستندات.");
         }
@@ -69,7 +69,7 @@ function DocumentListPage() {
       window.open(url, "_blank", "noopener");
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     } catch (err) {
-      setError("???? ??? ????? ?????.");
+      setError("تعذر تنزيل المستند.");
     } finally {
       setDownloadingId(null);
     }
@@ -83,7 +83,7 @@ function DocumentListPage() {
             مستندات {projectName}
           </Typography>
           <Typography color="text.secondary">
-            جميع المستندات المرتبطة بهذا المشروع.
+            عرض أحدث المستندات لهذا المشروع.
           </Typography>
           <Button component={Link} to="/upload" variant="contained" sx={{ alignSelf: "flex-start" }}>
             رفع مستند جديد

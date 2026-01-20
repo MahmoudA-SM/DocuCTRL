@@ -48,6 +48,21 @@ export const getMyProjects = async () => {
   return response.data;
 };
 
+export const getOwnerCompanies = async () => {
+  const response = await api.get("/owner-companies");
+  return response.data;
+};
+
+export const createOwnerCompany = async (payload) => {
+  const response = await api.post("/owner-companies", payload);
+  return response.data;
+};
+
+export const createProject = async (payload) => {
+  const response = await api.post("/projects", payload);
+  return response.data;
+};
+
 export const uploadDocument = async (formData) => {
   const response = await api.post("/upload", formData, {
     headers: {

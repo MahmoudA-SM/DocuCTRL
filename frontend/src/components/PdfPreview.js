@@ -1,4 +1,4 @@
-﻿import { Box, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 
 function PdfPreview({ url }) {
   if (!url) {
@@ -18,7 +18,7 @@ function PdfPreview({ url }) {
         }}
       >
         <Typography variant="body2">
-          ستظهر معاينة ملف PDF هنا بعد اكتمال الرفع
+          لم يتم تحميل ملف PDF بعد. ستظهر المعاينة هنا.
         </Typography>
       </Box>
     );

@@ -1,4 +1,4 @@
-﻿import { Box, Button, Chip, Typography } from "@mui/material";
+import { Box, Button, Chip, Typography } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
@@ -17,10 +17,10 @@ function SuccessPanel({ serial, downloadUrl, verifyUrl, onCopy }) {
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         <CheckCircleIcon color="success" />
-        <Typography variant="h6">تم ختم المستند بنجاح</Typography>
+        <Typography variant="h6">تم إصدار المستند بنجاح</Typography>
       </Box>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-        <Chip label={`الرقم التسلسلي: ${serial}`} color="secondary" />
+        <Chip label={`رقم التسلسل: ${serial}`} color="secondary" />
         <Button
           variant="text"
           size="small"
@@ -32,7 +32,7 @@ function SuccessPanel({ serial, downloadUrl, verifyUrl, onCopy }) {
       </Box>
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
         <Button variant="contained" href={downloadUrl} target="_blank">
-          تنزيل الملف
+          تنزيل المستند
         </Button>
         <Button variant="outlined" href={verifyUrl} target="_blank">
           التحقق من المستند

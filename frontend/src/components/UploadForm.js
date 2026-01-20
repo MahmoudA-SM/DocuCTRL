@@ -1,4 +1,4 @@
-﻿import {
+import {
   Box,
   Button,
   FormControl,
@@ -59,10 +59,10 @@ function UploadForm({
         }}
       >
         <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-          ارفع ملف PDF
+          تحميل ملف PDF
         </Typography>
         <Button variant="outlined" component="label" fullWidth>
-          اختر ملف PDF
+          تحميل ملف PDF
           <input
             hidden
             type="file"

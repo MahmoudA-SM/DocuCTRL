@@ -62,7 +62,7 @@ function VerifyPage() {
   const handleVerify = async (value) => {
     const normalized = normalizeSerial(value);
     if (!normalized) {
-      setError("الرجاء إدخال الرقم التسلسلي.");
+      setError("يرجى إدخال الرقم التسلسلي.");
       return;
     }
     setStatus("verifying");
@@ -72,12 +72,12 @@ function VerifyPage() {
       const result = await verifySerial(normalized);
       if (!result.valid) {
         setStatus("error");
-        setError("المستند غير موجود.");
+        setError("المستند غير صالح.");
         return;
       }
       if (!result.file_exists) {
         setStatus("error");
-        setError("الملف غير موجود في التخزين.");
+        setError("الملف غير متوفر في التخزين.");
         return;
       }
       const blob = await downloadDocument(result.document_id);
@@ -105,7 +105,7 @@ function VerifyPage() {
 
     if (!navigator.mediaDevices?.getUserMedia) {
       setStatus("error");
-      setError("الكاميرا غير مدعومة على هذا الجهاز.");
+      setError("المتصفح لا يدعم الوصول إلى الكاميرا.");
       return;
     }
 
@@ -192,7 +192,7 @@ function VerifyPage() {
             التحقق من المستند
           </Typography>
           <Typography color="text.secondary">
-            امسح رمز QR أو أدخل الرقم التسلسلي يدويًا.
+            امسح رمز QR أو أدخل الرقم التسلسلي للتحقق من صحة المستند.
           </Typography>
         </CardContent>
       </Card>
@@ -202,7 +202,7 @@ function VerifyPage() {
       <Box sx={{ display: "grid", gap: 3, gridTemplateColumns: { xs: "1fr", md: "1.1fr 1fr" } }}>
         <Card sx={{ borderRadius: 2, border: "1px solid var(--border)" }}>
           <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Typography variant="h6">مسح بالكاميرا</Typography>
+            <Typography variant="h6">مسح رمز QR</Typography>
             <Box
               sx={{
                 position: "relative",
