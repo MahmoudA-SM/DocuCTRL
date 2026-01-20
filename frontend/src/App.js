@@ -204,13 +204,13 @@ function App() {
                   </Typography>
                 </Box>
                 <Box sx={{ display: "flex", gap: 1 }}>
-                  <Button variant="outlined" href="/verify">
+                  <Button component={Link} to="/verify" variant="outlined">
                     التحقق من مستند
                   </Button>
-                  <Button variant="outlined" href="/projects/new">
+                  <Button component={Link} to="/projects/new" variant="outlined">
                     إنشاء مشروع
                   </Button>
-                  <Button variant="contained" href="/upload">
+                  <Button component={Link} to="/upload" variant="contained">
                     رفع مستند
                   </Button>
                 </Box>
