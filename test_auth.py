@@ -9,9 +9,9 @@ print(f"Verification result: {auth.verify_password(password, hashed)}")
 
 # Test 2: Check what's in the database
 db = database.SessionLocal()
-user = db.query(models.User).filter(models.User.username == "admin").first()
+user = db.query(models.User).filter(models.User.email == "admin@example.com").first()
 if user:
-    print(f"\nUser found: {user.username}")
+    print(f"\nUser found: {user.email}")
     print(f"Stored hash: {user.hashed_password}")
     if user.hashed_password:
         print(f"Password verification: {auth.verify_password(password, user.hashed_password)}")

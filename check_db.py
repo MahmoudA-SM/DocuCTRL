@@ -14,7 +14,7 @@ for col in columns:
 users = db.query(models.User).all()
 print(f"\nTotal users in database: {len(users)}")
 for user in users:
-    print(f"  - {user.username} (id: {user.id})")
+    print(f"  - {user.email} (id: {user.id})")
     print(f"    Has hashed_password: {hasattr(user, 'hashed_password') and user.hashed_password is not None}")
 
 db.close()

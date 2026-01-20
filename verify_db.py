@@ -14,10 +14,10 @@ for row in result:
     print(f"  - {row[0]}")
 
 # Check users
-result = db.execute(text("SELECT id, username, hashed_password FROM users"))
+result = db.execute(text("SELECT id, email, hashed_password FROM users"))
 print("\nUsers in database:")
 for row in result:
-    print(f"  ID: {row[0]}, Username: {row[1]}, Has Password: {row[2] is not None}")
+    print(f"  ID: {row[0]}, Email: {row[1]}, Has Password: {row[2] is not None}")
     if row[2]:
         print(f"    Password hash: {row[2][:50]}...")
 

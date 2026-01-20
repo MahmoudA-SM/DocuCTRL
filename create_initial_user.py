@@ -19,21 +19,21 @@ def create_admin():
         print("Make sure DATABASE_URL is set in your environment (or .env file)")
         return
 
-    username = input("Enter Username: ")
+    email = input("Enter Email: ").strip().lower()
     password = getpass("Enter Password: ")
     
-    if not username or not password:
-        print("Username and password are required.")
+    if not email or not password:
+        print("Email and password are required.")
         return
 
     # Check if user exists
-    existing_user = db.query(models.User).filter(models.User.username == username).first()
+    existing_user = db.query(models.User).filter(models.User.email == email).first()
     if existing_user:
-        print(f"User '{username}' already exists. Updating password...")
+        print(f"User '{email}' already exists. Updating password...")
         existing_user.hashed_password = auth.get_password_hash(password)
     else:
-        print(f"Creating new user '{username}'...")
-        new_user = models.User(username=username, hashed_password=auth.get_password_hash(password))
+        print(f"Creating new user '{email}'...")
+        new_user = models.User(email=email, hashed_password=auth.get_password_hash(password))
         db.add(new_user)
     
     try:

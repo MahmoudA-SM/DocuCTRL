@@ -6,10 +6,12 @@ import UploadFileOutlinedIcon from "@mui/icons-material/UploadFileOutlined";
 import FolderOpenOutlinedIcon from "@mui/icons-material/FolderOpenOutlined";
 import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
 import AddBusinessIcon from "@mui/icons-material/AddBusiness";
+import PersonAddAltIcon from "@mui/icons-material/PersonAddAlt";
 import UploadPage from "./pages/UploadPage";
 import DocumentListPage from "./pages/DocumentListPage";
 import VerifyPage from "./pages/VerifyPage";
 import CreateProjectPage from "./pages/CreateProjectPage";
+import CreateUserPage from "./pages/CreateUserPage";
 import { getMe } from "./services/api";
 
 function App() {
@@ -164,6 +166,27 @@ function App() {
             </Button>
             <Button
               component={Link}
+              to="/users/new"
+              variant="outlined"
+              fullWidth
+              startIcon={<PersonAddAltIcon />}
+              title={sidebarCollapsed ? "إضافة مستخدم" : undefined}
+              aria-label={sidebarCollapsed ? "إضافة مستخدم" : undefined}
+              sx={{
+                justifyContent: sidebarCollapsed ? "center" : "flex-start",
+                px: sidebarCollapsed ? 1 : 2,
+                minWidth: sidebarCollapsed ? 44 : "auto",
+                height: sidebarCollapsed ? 44 : "auto",
+                borderRadius: sidebarCollapsed ? 2.5 : 1.5,
+                "& .MuiButton-startIcon": {
+                  margin: 0,
+                },
+              }}
+            >
+              {sidebarCollapsed ? "" : "إضافة مستخدم"}
+            </Button>
+            <Button
+              component={Link}
               to="/verify"
               variant="text"
               fullWidth
@@ -194,7 +217,7 @@ function App() {
             }}
           >
             <Container maxWidth="xl" sx={{ py: 2.5 }}>
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
                 <Box>
                   <Typography variant="h5" sx={{ fontWeight: 700 }}>
                     لوحة التحكم
@@ -203,12 +226,15 @@ function App() {
                     تابع عمليات الرفع والتحقق وإدارة المشروعات من مكان واحد.
                   </Typography>
                 </Box>
-                <Box sx={{ display: "flex", gap: 1 }}>
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                   <Button component={Link} to="/verify" variant="outlined">
                     التحقق من مستند
                   </Button>
                   <Button component={Link} to="/projects/new" variant="outlined">
                     إنشاء مشروع
+                  </Button>
+                  <Button component={Link} to="/users/new" variant="outlined">
+                    إضافة مستخدم
                   </Button>
                   <Button component={Link} to="/upload" variant="contained">
                     رفع مستند
@@ -224,6 +250,7 @@ function App() {
               <Route path="/upload" element={<UploadPage />} />
               <Route path="/projects/new" element={<CreateProjectPage />} />
               <Route path="/projects/:projectId/documents" element={<DocumentListPage />} />
+              <Route path="/users/new" element={<CreateUserPage />} />
               <Route path="/verify" element={<VerifyPage />} />
             </Routes>
           </Container>

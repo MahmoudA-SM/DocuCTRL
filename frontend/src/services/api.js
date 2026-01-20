@@ -63,6 +63,11 @@ export const createProject = async (payload) => {
   return response.data;
 };
 
+export const createUser = async (payload) => {
+  const response = await api.post("/users", payload);
+  return response.data;
+};
+
 export const uploadDocument = async (formData) => {
   const response = await api.post("/upload", formData, {
     headers: {
