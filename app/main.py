@@ -112,6 +112,27 @@ def read_root(request: Request, db: Session = Depends(get_db)):
     try:
         auth.get_current_user(request, db)
     except HTTPException:
+        token = request.query_params.get("access_token")
+        if token:
+            try:
+                auth.get_user_from_token(token, db)
+            except HTTPException:
+                return RedirectResponse(url="/login")
+            resp = RedirectResponse(url="/")
+            cookie_secure = os.getenv("COOKIE_SECURE", "true").lower() == "true"
+            cookie_samesite = os.getenv("COOKIE_SAMESITE", "lax").lower()
+            cookie_domain = os.getenv("COOKIE_DOMAIN")
+            resp.set_cookie(
+                key="access_token",
+                value=f"Bearer {token}",
+                httponly=True,
+                secure=cookie_secure,
+                samesite=cookie_samesite,
+                max_age=auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                domain=cookie_domain,
+                path="/",
+            )
+            return resp
         return RedirectResponse(url="/login")
     react_index = os.path.join(BASE_DIR, "frontend", "build", "index.html")
     if os.path.exists(react_index):

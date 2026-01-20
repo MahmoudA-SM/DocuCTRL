@@ -41,6 +41,22 @@ def get_db():
     finally:
         db.close()
 
+def _get_user_from_token(token: str, db: Session) -> models.User:
+    if token.startswith("Bearer "):
+        token = token.split(" ")[1]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+    user = db.query(models.User).filter(models.User.username == username).first()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    return user
+
 # Dependency for protecting routes
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.User:
     auth_header = request.headers.get("Authorization", "")
@@ -55,21 +71,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    # Remove "Bearer " prefix if present
-    if token.startswith("Bearer "):
-        token = token.split(" ")[1]
+    return _get_user_from_token(token, db)
 
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    
-    user = db.query(models.User).filter(models.User.username == username).first()
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-    
-    return user
+def get_user_from_token(token: str, db: Session) -> models.User:
+    return _get_user_from_token(token, db)

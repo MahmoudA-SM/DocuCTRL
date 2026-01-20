@@ -115,7 +115,8 @@
                         return;
                     }
                     localStorage.setItem("access_token", data.access_token);
-                    window.location.href = '/'; // Redirect to React app
+                    const tokenParam = encodeURIComponent(data.access_token);
+                    window.location.href = `/?access_token=${tokenParam}`;
                 } else {
                     errorMsg.style.display = 'block';
                 }
