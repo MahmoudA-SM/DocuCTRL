@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { Box, Container, Typography, Button, IconButton } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -21,6 +21,17 @@ function App() {
     const ensureAuth = async () => {
       if (window.location.pathname === "/login") {
         return;
+      }
+      const url = new URL(window.location.href);
+      const urlToken = url.searchParams.get("access_token");
+      if (urlToken) {
+        try {
+          localStorage.setItem("access_token", urlToken);
+        } catch (err) {
+          // ignore storage errors
+        }
+        url.searchParams.delete("access_token");
+        window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
       }
       const token = localStorage.getItem("access_token");
       if (!token) {
@@ -45,6 +56,8 @@ function App() {
   if (!authChecked) {
     return null;
   }
+
+  const toggleLabel = sidebarCollapsed ? "توسيع الشريط الجانبي" : "طي الشريط الجانبي";
 
   return (
     <BrowserRouter>
@@ -75,14 +88,14 @@ function App() {
             <IconButton
               size="small"
               onClick={() => setSidebarCollapsed((prev) => !prev)}
-              aria-label={sidebarCollapsed ? "توسيع القائمة الجانبية" : "طي القائمة الجانبية"}
+              aria-label={toggleLabel}
             >
               <MenuIcon fontSize="small" />
             </IconButton>
           </Box>
           {!sidebarCollapsed ? (
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              نظام إدارة الوثائق لتتبع ملفات PDF المختومة والمشاريع.
+              لوحة تحكم لإدارة ملفات PDF والمشروعات بأمان كامل.
             </Typography>
           ) : null}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
@@ -92,8 +105,8 @@ function App() {
               variant="contained"
               fullWidth
               startIcon={<UploadFileOutlinedIcon />}
-              title={sidebarCollapsed ? "رفع ملف" : undefined}
-              aria-label={sidebarCollapsed ? "رفع ملف" : undefined}
+              title={sidebarCollapsed ? "رفع مستند" : undefined}
+              aria-label={sidebarCollapsed ? "رفع مستند" : undefined}
               sx={{
                 justifyContent: sidebarCollapsed ? "center" : "flex-start",
                 px: sidebarCollapsed ? 1 : 2,
@@ -105,7 +118,7 @@ function App() {
                 },
               }}
             >
-              {sidebarCollapsed ? "" : "رفع ملف"}
+              {sidebarCollapsed ? "" : "رفع مستند"}
             </Button>
             <Button
               component={Link}
@@ -113,8 +126,8 @@ function App() {
               variant="outlined"
               fullWidth
               startIcon={<FolderOpenOutlinedIcon />}
-              title={sidebarCollapsed ? "مستندات المشروع" : undefined}
-              aria-label={sidebarCollapsed ? "مستندات المشروع" : undefined}
+              title={sidebarCollapsed ? "المشروعات" : undefined}
+              aria-label={sidebarCollapsed ? "المشروعات" : undefined}
               sx={{
                 justifyContent: sidebarCollapsed ? "center" : "flex-start",
                 px: sidebarCollapsed ? 1 : 2,
@@ -126,7 +139,7 @@ function App() {
                 },
               }}
             >
-              {sidebarCollapsed ? "" : "مستندات المشروع"}
+              {sidebarCollapsed ? "" : "المشروعات"}
             </Button>
             <Button
               component={Link}
@@ -187,7 +200,7 @@ function App() {
                     لوحة التحكم
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    راقب المستندات والمشاريع من مكان واحد.
+                    تابع عمليات الرفع والتحقق وإدارة المشروعات من مكان واحد.
                   </Typography>
                 </Box>
                 <Box sx={{ display: "flex", gap: 1 }}>
@@ -198,7 +211,7 @@ function App() {
                     إنشاء مشروع
                   </Button>
                   <Button variant="contained" href="/upload">
-                    رفع ملف
+                    رفع مستند
                   </Button>
                 </Box>
               </Box>
