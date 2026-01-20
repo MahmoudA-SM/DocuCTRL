@@ -14,3 +14,4 @@ gunicorn
 bcrypt
 python-jose[cryptography]
 websockets>=13.0
+email-validator
