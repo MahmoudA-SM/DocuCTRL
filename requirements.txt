@@ -8,6 +8,7 @@ segno
 arabic-reshaper
 python-bidi
 python-multipart
+python-dotenv
 supabase
 gunicorn
 bcrypt
