@@ -108,7 +108,11 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.
     return auth.get_current_user(request, db)
 
 @app.get("/")
-def read_root():
+def read_root(request: Request, db: Session = Depends(get_db)):
+    try:
+        auth.get_current_user(request, db)
+    except HTTPException:
+        return RedirectResponse(url="/login")
     react_index = os.path.join(BASE_DIR, "frontend", "build", "index.html")
     if os.path.exists(react_index):
         return FileResponse(react_index)

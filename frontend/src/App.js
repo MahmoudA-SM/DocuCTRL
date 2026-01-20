@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { Box, Container, Typography, Button, IconButton } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -10,10 +10,41 @@ import UploadPage from "./pages/UploadPage";
 import DocumentListPage from "./pages/DocumentListPage";
 import VerifyPage from "./pages/VerifyPage";
 import CreateProjectPage from "./pages/CreateProjectPage";
+import { getMe } from "./services/api";
 
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const sidebarWidth = sidebarCollapsed ? 84 : 260;
+
+  useEffect(() => {
+    const ensureAuth = async () => {
+      if (window.location.pathname === "/login") {
+        return;
+      }
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        window.location.href = "/login";
+        return;
+      }
+      try {
+        await getMe();
+        setAuthChecked(true);
+      } catch (err) {
+        try {
+          localStorage.removeItem("access_token");
+        } catch (removeErr) {
+          // ignore storage errors
+        }
+        window.location.href = "/login";
+      }
+    };
+    ensureAuth();
+  }, []);
+
+  if (!authChecked) {
+    return null;
+  }
 
   return (
     <BrowserRouter>
