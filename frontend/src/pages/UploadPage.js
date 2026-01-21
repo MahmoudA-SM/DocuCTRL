@@ -79,7 +79,14 @@ function UploadPage() {
 
   const handleFileChange = (event) => {
     const selected = event.target.files && event.target.files[0];
-    if (selected && selected.type !== "application/pdf") {
+    const fileType = selected?.type || "";
+    const fileName = selected?.name || "";
+    const isPdf =
+      fileName.toLowerCase().endsWith(".pdf") ||
+      fileType === "application/pdf" ||
+      fileType === "application/x-pdf" ||
+      fileType === "application/octet-stream";
+    if (selected && !isPdf) {
       setUploadError("يسمح فقط بملفات PDF.");
       event.target.value = "";
       return;
@@ -132,7 +139,19 @@ function UploadPage() {
       if (error.response && error.response.status === 403) {
         setUploadError("ليس لديك صلاحية لرفع المستند لهذا المشروع.");
       } else {
-        setUploadError("تعذر رفع المستند. حاول مرة أخرى.");
+        const detail = error?.response?.data?.detail;
+        const detailMap = {
+          "Only PDF files are accepted": "يسمح فقط بملفات PDF.",
+          "Project not found": "تعذر العثور على المشروع المحدد.",
+          "Owner Company not found": "تعذر العثور على الجهة المالكة.",
+          "Owner company does not match project owner": "الجهة المالكة لا تطابق مالك المشروع.",
+          "يسمح فقط بملفات PDF.": "يسمح فقط بملفات PDF.",
+        };
+        if (typeof detail === "string" && detailMap[detail]) {
+          setUploadError(detailMap[detail]);
+        } else {
+          setUploadError("تعذر رفع المستند. حاول مرة أخرى.");
+        }
       }
     } finally {
       setLoading(false);

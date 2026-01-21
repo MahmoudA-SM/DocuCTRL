@@ -17,6 +17,7 @@ import { getMe } from "./services/api";
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [me, setMe] = useState(null);
   const sidebarWidth = sidebarCollapsed ? 84 : 260;
 
   useEffect(() => {
@@ -41,7 +42,8 @@ function App() {
         return;
       }
       try {
-        await getMe();
+        const meData = await getMe();
+        setMe(meData);
         setAuthChecked(true);
       } catch (err) {
         try {
@@ -58,6 +60,24 @@ function App() {
   if (!authChecked) {
     return null;
   }
+
+  const permissions = new Set(me?.permissions || []);
+  const canManageUsers = permissions.has("manage_users");
+  const canManageProjects = permissions.has("manage_projects");
+  const canUpload = permissions.has("upload_documents");
+  const canViewDocuments = permissions.has("view_documents");
+  const canVerify = permissions.has("verify_documents");
+
+  const UnauthorizedPage = () => (
+    <Box sx={{ p: { xs: 2, md: 4 } }}>
+      <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+        Not authorized
+      </Typography>
+      <Typography color="text.secondary">
+        You do not have permission to view this page.
+      </Typography>
+    </Box>
+  );
 
   const toggleLabel = sidebarCollapsed ? "توسيع الشريط الجانبي" : "طي الشريط الجانبي";
 
@@ -101,111 +121,121 @@ function App() {
             </Typography>
           ) : null}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <Button
-              component={Link}
-              to="/upload"
-              variant="contained"
-              fullWidth
-              startIcon={<UploadFileOutlinedIcon />}
-              title={sidebarCollapsed ? "رفع مستند" : undefined}
-              aria-label={sidebarCollapsed ? "رفع مستند" : undefined}
-              sx={{
-                justifyContent: sidebarCollapsed ? "center" : "flex-start",
-                px: sidebarCollapsed ? 1 : 2,
-                minWidth: sidebarCollapsed ? 44 : "auto",
-                height: sidebarCollapsed ? 44 : "auto",
-                borderRadius: sidebarCollapsed ? 2.5 : 1.5,
-                "& .MuiButton-startIcon": {
-                  margin: 0,
-                },
-              }}
-            >
-              {sidebarCollapsed ? "" : "رفع مستند"}
-            </Button>
-            <Button
-              component={Link}
-              to="/projects/1/documents"
-              variant="outlined"
-              fullWidth
-              startIcon={<FolderOpenOutlinedIcon />}
-              title={sidebarCollapsed ? "المشروعات" : undefined}
-              aria-label={sidebarCollapsed ? "المشروعات" : undefined}
-              sx={{
-                justifyContent: sidebarCollapsed ? "center" : "flex-start",
-                px: sidebarCollapsed ? 1 : 2,
-                minWidth: sidebarCollapsed ? 44 : "auto",
-                height: sidebarCollapsed ? 44 : "auto",
-                borderRadius: sidebarCollapsed ? 2.5 : 1.5,
-                "& .MuiButton-startIcon": {
-                  margin: 0,
-                },
-              }}
-            >
-              {sidebarCollapsed ? "" : "المشروعات"}
-            </Button>
-            <Button
-              component={Link}
-              to="/projects/new"
-              variant="outlined"
-              fullWidth
-              startIcon={<AddBusinessIcon />}
-              title={sidebarCollapsed ? "إنشاء مشروع" : undefined}
-              aria-label={sidebarCollapsed ? "إنشاء مشروع" : undefined}
-              sx={{
-                justifyContent: sidebarCollapsed ? "center" : "flex-start",
-                px: sidebarCollapsed ? 1 : 2,
-                minWidth: sidebarCollapsed ? 44 : "auto",
-                height: sidebarCollapsed ? 44 : "auto",
-                borderRadius: sidebarCollapsed ? 2.5 : 1.5,
-                "& .MuiButton-startIcon": {
-                  margin: 0,
-                },
-              }}
-            >
-              {sidebarCollapsed ? "" : "إنشاء مشروع"}
-            </Button>
-            <Button
-              component={Link}
-              to="/users/new"
-              variant="outlined"
-              fullWidth
-              startIcon={<PersonAddAltIcon />}
-              title={sidebarCollapsed ? "إضافة مستخدم" : undefined}
-              aria-label={sidebarCollapsed ? "إضافة مستخدم" : undefined}
-              sx={{
-                justifyContent: sidebarCollapsed ? "center" : "flex-start",
-                px: sidebarCollapsed ? 1 : 2,
-                minWidth: sidebarCollapsed ? 44 : "auto",
-                height: sidebarCollapsed ? 44 : "auto",
-                borderRadius: sidebarCollapsed ? 2.5 : 1.5,
-                "& .MuiButton-startIcon": {
-                  margin: 0,
-                },
-              }}
-            >
-              {sidebarCollapsed ? "" : "إضافة مستخدم"}
-            </Button>
-            <Button
-              component={Link}
-              to="/verify"
-              variant="text"
-              fullWidth
-              startIcon={<QrCodeScannerIcon />}
-              title={sidebarCollapsed ? "التحقق من مستند" : undefined}
-              aria-label={sidebarCollapsed ? "التحقق من مستند" : undefined}
-              sx={{
-                justifyContent: sidebarCollapsed ? "center" : "flex-start",
-                px: sidebarCollapsed ? 1 : 2,
-                minWidth: sidebarCollapsed ? 44 : "auto",
-                height: sidebarCollapsed ? 44 : "auto",
-                borderRadius: sidebarCollapsed ? 2.5 : 1.5,
-                "& .MuiButton-startIcon": {
-                  margin: 0,
-                },
-              }}
-            >
-              {sidebarCollapsed ? "" : "التحقق من مستند"}
-            </Button>
+            {canUpload ? (
+              <Button
+                component={Link}
+                to="/upload"
+                variant="contained"
+                fullWidth
+                startIcon={<UploadFileOutlinedIcon />}
+                title={sidebarCollapsed ? "رفع مستند" : undefined}
+                aria-label={sidebarCollapsed ? "رفع مستند" : undefined}
+                sx={{
+                  justifyContent: sidebarCollapsed ? "center" : "flex-start",
+                  px: sidebarCollapsed ? 1 : 2,
+                  minWidth: sidebarCollapsed ? 44 : "auto",
+                  height: sidebarCollapsed ? 44 : "auto",
+                  borderRadius: sidebarCollapsed ? 2.5 : 1.5,
+                  "& .MuiButton-startIcon": {
+                    margin: 0,
+                  },
+                }}
+              >
+                {sidebarCollapsed ? "" : "رفع مستند"}
+              </Button>
+            ) : null}
+            {canViewDocuments ? (
+              <Button
+                component={Link}
+                to="/projects/1/documents"
+                variant="outlined"
+                fullWidth
+                startIcon={<FolderOpenOutlinedIcon />}
+                title={sidebarCollapsed ? "المشروعات" : undefined}
+                aria-label={sidebarCollapsed ? "المشروعات" : undefined}
+                sx={{
+                  justifyContent: sidebarCollapsed ? "center" : "flex-start",
+                  px: sidebarCollapsed ? 1 : 2,
+                  minWidth: sidebarCollapsed ? 44 : "auto",
+                  height: sidebarCollapsed ? 44 : "auto",
+                  borderRadius: sidebarCollapsed ? 2.5 : 1.5,
+                  "& .MuiButton-startIcon": {
+                    margin: 0,
+                  },
+                }}
+              >
+                {sidebarCollapsed ? "" : "المشروعات"}
+              </Button>
+            ) : null}
+            {canManageProjects ? (
+              <Button
+                component={Link}
+                to="/projects/new"
+                variant="outlined"
+                fullWidth
+                startIcon={<AddBusinessIcon />}
+                title={sidebarCollapsed ? "إنشاء مشروع" : undefined}
+                aria-label={sidebarCollapsed ? "إنشاء مشروع" : undefined}
+                sx={{
+                  justifyContent: sidebarCollapsed ? "center" : "flex-start",
+                  px: sidebarCollapsed ? 1 : 2,
+                  minWidth: sidebarCollapsed ? 44 : "auto",
+                  height: sidebarCollapsed ? 44 : "auto",
+                  borderRadius: sidebarCollapsed ? 2.5 : 1.5,
+                  "& .MuiButton-startIcon": {
+                    margin: 0,
+                  },
+                }}
+              >
+                {sidebarCollapsed ? "" : "إنشاء مشروع"}
+              </Button>
+            ) : null}
+            {canManageUsers ? (
+              <Button
+                component={Link}
+                to="/users/new"
+                variant="outlined"
+                fullWidth
+                startIcon={<PersonAddAltIcon />}
+                title={sidebarCollapsed ? "إضافة مستخدم" : undefined}
+                aria-label={sidebarCollapsed ? "إضافة مستخدم" : undefined}
+                sx={{
+                  justifyContent: sidebarCollapsed ? "center" : "flex-start",
+                  px: sidebarCollapsed ? 1 : 2,
+                  minWidth: sidebarCollapsed ? 44 : "auto",
+                  height: sidebarCollapsed ? 44 : "auto",
+                  borderRadius: sidebarCollapsed ? 2.5 : 1.5,
+                  "& .MuiButton-startIcon": {
+                    margin: 0,
+                  },
+                }}
+              >
+                {sidebarCollapsed ? "" : "إضافة مستخدم"}
+              </Button>
+            ) : null}
+            {canVerify ? (
+              <Button
+                component={Link}
+                to="/verify"
+                variant="text"
+                fullWidth
+                startIcon={<QrCodeScannerIcon />}
+                title={sidebarCollapsed ? "التحقق من مستند" : undefined}
+                aria-label={sidebarCollapsed ? "التحقق من مستند" : undefined}
+                sx={{
+                  justifyContent: sidebarCollapsed ? "center" : "flex-start",
+                  px: sidebarCollapsed ? 1 : 2,
+                  minWidth: sidebarCollapsed ? 44 : "auto",
+                  height: sidebarCollapsed ? 44 : "auto",
+                  borderRadius: sidebarCollapsed ? 2.5 : 1.5,
+                  "& .MuiButton-startIcon": {
+                    margin: 0,
+                  },
+                }}
+              >
+                {sidebarCollapsed ? "" : "التحقق من مستند"}
+              </Button>
+            ) : null}
           </Box>
         </Box>
 
@@ -227,18 +257,26 @@ function App() {
                   </Typography>
                 </Box>
                 <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                  <Button component={Link} to="/verify" variant="outlined">
-                    التحقق من مستند
-                  </Button>
-                  <Button component={Link} to="/projects/new" variant="outlined">
-                    إنشاء مشروع
-                  </Button>
-                  <Button component={Link} to="/users/new" variant="outlined">
-                    إضافة مستخدم
-                  </Button>
-                  <Button component={Link} to="/upload" variant="contained">
-                    رفع مستند
-                  </Button>
+                  {canVerify ? (
+                    <Button component={Link} to="/verify" variant="outlined">
+                      التحقق من مستند
+                    </Button>
+                  ) : null}
+                  {canManageProjects ? (
+                    <Button component={Link} to="/projects/new" variant="outlined">
+                      إنشاء مشروع
+                    </Button>
+                  ) : null}
+                  {canManageUsers ? (
+                    <Button component={Link} to="/users/new" variant="outlined">
+                      إضافة مستخدم
+                    </Button>
+                  ) : null}
+                  {canUpload ? (
+                    <Button component={Link} to="/upload" variant="contained">
+                      رفع مستند
+                    </Button>
+                  ) : null}
                 </Box>
               </Box>
             </Container>
@@ -247,11 +285,11 @@ function App() {
           <Container maxWidth="xl" sx={{ py: 4 }}>
             <Routes>
               <Route path="/" element={<Navigate to="/upload" replace />} />
-              <Route path="/upload" element={<UploadPage />} />
-              <Route path="/projects/new" element={<CreateProjectPage />} />
-              <Route path="/projects/:projectId/documents" element={<DocumentListPage />} />
-              <Route path="/users/new" element={<CreateUserPage />} />
-              <Route path="/verify" element={<VerifyPage />} />
+              <Route path="/upload" element={canUpload ? <UploadPage /> : <UnauthorizedPage />} />
+              <Route path="/projects/new" element={canManageProjects ? <CreateProjectPage /> : <UnauthorizedPage />} />
+              <Route path="/projects/:projectId/documents" element={canViewDocuments ? <DocumentListPage /> : <UnauthorizedPage />} />
+              <Route path="/users/new" element={canManageUsers ? <CreateUserPage /> : <UnauthorizedPage />} />
+              <Route path="/verify" element={canVerify ? <VerifyPage /> : <UnauthorizedPage />} />
             </Routes>
           </Container>
         </Box>

@@ -28,13 +28,20 @@ def create_admin():
 
     # Check if user exists
     existing_user = db.query(models.User).filter(models.User.email == email).first()
+    auth.ensure_default_roles_permissions(db)
     if existing_user:
         print(f"User '{email}' already exists. Updating password...")
         existing_user.hashed_password = auth.get_password_hash(password)
+        try:
+            auth.assign_role_to_user(db, existing_user, "admin")
+        except ValueError:
+            pass
     else:
         print(f"Creating new user '{email}'...")
         new_user = models.User(email=email, hashed_password=auth.get_password_hash(password))
         db.add(new_user)
+        db.flush()
+        auth.assign_role_to_user(db, new_user, "admin")
     
     try:
         db.commit()

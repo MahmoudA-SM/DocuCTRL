@@ -1,5 +1,6 @@
 import bcrypt
 from app import auth, database, models
+from app import main
 
 # Test 1: Generate a hash and verify it
 password = "password123"
