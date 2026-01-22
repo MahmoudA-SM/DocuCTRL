@@ -10,7 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from sqlalchemy import inspect, text
-from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse, JSONResponse, StreamingResponse
+from urllib.parse import quote
+import urllib.request
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, constr, EmailStr
 from typing import Optional
@@ -528,7 +530,15 @@ def download_document(
     if not assignment:
         raise HTTPException(status_code=403, detail="Not authorized for this document")
 
+    download_name = doc.original_filename or doc.filename
+    fallback_name = "".join(
+        ch if ch.isascii() and (ch.isalnum() or ch in {".", "-", "_"}) else "_"
+        for ch in download_name
+    ) or "document.pdf"
     filename = f"{doc.serial}_{doc.filename}"
+    content_disposition = (
+        f"inline; filename=\"{fallback_name}\"; filename*=UTF-8''{quote(download_name)}"
+    )
     
     if supabase:
         try:
@@ -544,7 +554,22 @@ def download_document(
             signed_url = res.get("signedURL") or res.get("signedUrl") or res.get("signed_url")
         if not signed_url:
             raise HTTPException(status_code=500, detail="Signed URL generation failed")
-        return RedirectResponse(url=signed_url)
+        def _stream_from_url(url: str):
+            try:
+                with urllib.request.urlopen(url) as response:
+                    while True:
+                        chunk = response.read(1024 * 256)
+                        if not chunk:
+                            break
+                        yield chunk
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Failed to download file: {str(e)}")
+
+        return StreamingResponse(
+            _stream_from_url(signed_url),
+            media_type="application/pdf",
+            headers={"Content-Disposition": content_disposition},
+        )
     else:
         file_path = os.path.join(STORAGE_DIR, filename)
         if not os.path.exists(file_path):
@@ -554,5 +579,5 @@ def download_document(
             path=file_path,
             media_type="application/pdf",
             filename=filename,
-            headers={"Content-Disposition": f'inline; filename="{filename}"'}
+            headers={"Content-Disposition": content_disposition}
         )
