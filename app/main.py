@@ -344,7 +344,12 @@ async def upload_document(
 
 
     os.makedirs(STORAGE_DIR, exist_ok=True)
-    safe_name = os.path.basename(file.filename)
+    def _sanitize_filename(name: str) -> str:
+        base = os.path.basename(name or "")
+        cleaned = "".join(ch if ch.isalnum() or ch in {".", "-", "_"} else "_" for ch in base)
+        return cleaned or "document.pdf"
+
+    safe_name = _sanitize_filename(file.filename)
 
 
     new_doc = models.Document(
