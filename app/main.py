@@ -552,13 +552,6 @@ def download_document(
     if not doc or not doc.serial:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    assignment = db.query(models.UserProjectAssignment).filter(
-        models.UserProjectAssignment.user_id == current_user.id,
-        models.UserProjectAssignment.project_id == doc.project_id,
-    ).first()
-    if not assignment:
-        raise HTTPException(status_code=403, detail="Not authorized for this document")
-
     download_name = doc.original_filename or doc.filename
     fallback_name = "".join(
         ch if ch.isascii() and (ch.isalnum() or ch in {".", "-", "_"}) else "_"
