@@ -524,8 +524,6 @@ def list_all_documents(user: models.User = Depends(get_current_user), db: Sessio
     docs = (
         db.query(models.Document, models.Project)
         .join(models.Project, models.Document.project_id == models.Project.id)
-        .join(models.UserProjectAssignment, models.UserProjectAssignment.project_id == models.Project.id)
-        .filter(models.UserProjectAssignment.user_id == user.id)
         .order_by(models.Document.id.desc())
         .all()
     )
