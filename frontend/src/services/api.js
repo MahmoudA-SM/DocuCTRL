@@ -99,6 +99,14 @@ export const downloadDocument = async (documentId) => {
   return response.data;
 };
 
+export const exportDocuments = async (projectId) => {
+  const response = await api.get("/documents/export", {
+    params: projectId ? { project_id: projectId } : {},
+    responseType: "blob",
+  });
+  return response.data;
+};
+
 export const buildVerifyPageUrl = (serial) => `/verify?serial=${encodeURIComponent(serial)}`;
 
 export default api;

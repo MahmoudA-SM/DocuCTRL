@@ -139,8 +139,8 @@ function App() {
                 variant="outlined"
                 fullWidth
                 startIcon={<FolderOpenOutlinedIcon />}
-                title={sidebarCollapsed ? "المشروعات" : undefined}
-                aria-label={sidebarCollapsed ? "المشروعات" : undefined}
+                title={sidebarCollapsed ? "المستندات" : undefined}
+                aria-label={sidebarCollapsed ? "المستندات" : undefined}
                 sx={{
                   justifyContent: sidebarCollapsed ? "center" : "flex-start",
                   px: sidebarCollapsed ? 1 : 2,
@@ -152,7 +152,7 @@ function App() {
                   },
                 }}
               >
-                {sidebarCollapsed ? "" : "المشروعات"}
+                {sidebarCollapsed ? "" : "المستندات"}
               </Button>
             ) : null}
             {canManageProjects ? (

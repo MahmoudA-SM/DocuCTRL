@@ -19,6 +19,7 @@ import {
   getProjectDocuments,
   getAllDocuments,
   downloadDocument,
+  exportDocuments,
 } from "../services/api";
 
 function DocumentListPage() {
@@ -26,6 +27,7 @@ function DocumentListPage() {
   const [documents, setDocuments] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
   const [downloadingId, setDownloadingId] = useState(null);
 
@@ -79,6 +81,27 @@ function DocumentListPage() {
     }
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    setError("");
+    try {
+      const blob = await exportDocuments(projectId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const suffix = projectId ? `project-${projectId}` : "documents";
+      link.href = url;
+      link.download = `${suffix}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (err) {
+      setError("تعذر تنزيل ملف الإكسل.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       <Card sx={{ borderRadius: 2, border: "1px solid var(--border)" }}>
@@ -89,9 +112,14 @@ function DocumentListPage() {
           <Typography color="text.secondary">
             راجع سجل المستندات الخاصة بهذا المشروع.
           </Typography>
-          <Button component={Link} to="/upload" variant="contained" sx={{ alignSelf: "flex-start" }}>
-            رفع مستند جديد
-          </Button>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            <Button component={Link} to="/upload" variant="contained">
+              رفع مستند جديد
+            </Button>
+            <Button variant="outlined" onClick={handleExport} disabled={exporting}>
+              {exporting ? "جارٍ تحضير الملف..." : "تنزيل سجل الإكسل"}
+            </Button>
+          </Box>
         </CardContent>
       </Card>
 

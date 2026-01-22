@@ -1,6 +1,7 @@
 import os
 import shutil
 import logging
+from io import BytesIO
 from datetime import datetime, timedelta
 
 from dotenv import load_dotenv, find_dotenv
@@ -15,6 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse, JSONResponse, StreamingResponse
 from urllib.parse import quote
 import urllib.request
+from openpyxl import Workbook
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, constr, EmailStr
 from typing import Optional
@@ -538,6 +540,45 @@ def list_all_documents(user: models.User = Depends(get_current_user), db: Sessio
         }
         for doc, project in docs
     ]
+
+
+@app.get("/documents/export")
+def export_documents(
+    project_id: int | None = None,
+    user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    query = (
+        db.query(models.Document, models.Project)
+        .join(models.Project, models.Document.project_id == models.Project.id)
+        .order_by(models.Document.id.desc())
+    )
+    if project_id:
+        query = query.filter(models.Document.project_id == project_id)
+    rows = query.all()
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Documents"
+    sheet.append(["Serial", "Filename", "Project", "Upload Date"])
+    for doc, project in rows:
+        sheet.append(
+            [
+                doc.serial,
+                doc.original_filename or doc.filename,
+                project.name,
+                doc.upload_date.isoformat() if doc.upload_date else "",
+            ]
+        )
+
+    output = BytesIO()
+    workbook.save(output)
+    output.seek(0)
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=\"documents.xlsx\""},
+    )
 
 
 @app.get("/documents/{document_id}/download")
