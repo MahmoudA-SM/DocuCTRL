@@ -567,7 +567,7 @@ def export_documents(
                 doc.serial,
                 doc.original_filename or doc.filename,
                 project.name,
-                doc.upload_date.isoformat() if doc.upload_date else "",
+                doc.upload_date.date().isoformat() if doc.upload_date else "",
             ]
         )
 
