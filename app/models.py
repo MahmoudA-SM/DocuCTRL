@@ -1,23 +1,9 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Sequence, func, Table
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Sequence, func
 from sqlalchemy.orm import relationship
 from .database import Base
 
 
 doc_id_seq = Sequence('documents_id_seq', start=2, metadata=Base.metadata)
-
-user_roles = Table(
-    "user_roles",
-    Base.metadata,
-    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
-    Column("role_id", Integer, ForeignKey("roles.id"), primary_key=True),
-)
-
-role_permissions = Table(
-    "role_permissions",
-    Base.metadata,
-    Column("role_id", Integer, ForeignKey("roles.id"), primary_key=True),
-    Column("permission_id", Integer, ForeignKey("permissions.id"), primary_key=True),
-)
 
 class OwnerCompany(Base):
     __tablename__ = "owner_companies"
@@ -62,7 +48,6 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
 
-    roles = relationship("Role", secondary=user_roles, back_populates="users")
     assignments = relationship("UserProjectAssignment", back_populates="user")
 
 class UserProjectAssignment(Base):
@@ -72,19 +57,3 @@ class UserProjectAssignment(Base):
 
     user = relationship("User", back_populates="assignments")
     project = relationship("Project", back_populates="assigned_users")
-
-class Role(Base):
-    __tablename__ = "roles"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True)
-
-    users = relationship("User", secondary=user_roles, back_populates="roles")
-    permissions = relationship("Permission", secondary=role_permissions, back_populates="roles")
-
-class Permission(Base):
-    __tablename__ = "permissions"
-    id = Column(Integer, primary_key=True, index=True)
-    code = Column(String, unique=True, index=True)
-    description = Column(String)
-
-    roles = relationship("Role", secondary=role_permissions, back_populates="permissions")

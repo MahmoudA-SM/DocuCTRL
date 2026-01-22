@@ -1,9 +1,16 @@
 import os
 import sys
 from getpass import getpass
+
+from dotenv import load_dotenv
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
+
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from app import database,models, auth
+
+from app import auth, database, models
 
 # ... existing code ...
 
@@ -19,29 +26,26 @@ def create_admin():
         print("Make sure DATABASE_URL is set in your environment (or .env file)")
         return
 
-    email = input("Enter Email: ").strip().lower()
-    password = getpass("Enter Password: ")
+    env_email = os.getenv("ADMIN_EMAIL")
+    env_password = os.getenv("ADMIN_PASSWORD")
+    email = (env_email or input("Enter Email: ")).strip().lower()
+    password = env_password or ""
     
-    if not email or not password:
-        print("Email and password are required.")
-        return
-
     # Check if user exists
     existing_user = db.query(models.User).filter(models.User.email == email).first()
-    auth.ensure_default_roles_permissions(db)
     if existing_user:
-        print(f"User '{email}' already exists. Updating password...")
-        existing_user.hashed_password = auth.get_password_hash(password)
-        try:
-            auth.assign_role_to_user(db, existing_user, "admin")
-        except ValueError:
-            pass
+        if password:
+            print(f"User '{email}' already exists. Updating password...")
+            existing_user.hashed_password = auth.get_password_hash(password)
+        else:
+            print(f"User '{email}' already exists.")
     else:
+        if not password:
+            print("Password is required to create a new user.")
+            return
         print(f"Creating new user '{email}'...")
         new_user = models.User(email=email, hashed_password=auth.get_password_hash(password))
         db.add(new_user)
-        db.flush()
-        auth.assign_role_to_user(db, new_user, "admin")
     
     try:
         db.commit()

@@ -61,23 +61,11 @@ function App() {
     return null;
   }
 
-  const permissions = new Set(me?.permissions || []);
-  const canManageUsers = permissions.has("manage_users");
-  const canManageProjects = permissions.has("manage_projects");
-  const canUpload = permissions.has("upload_documents");
-  const canViewDocuments = permissions.has("view_documents");
-  const canVerify = permissions.has("verify_documents");
-
-  const UnauthorizedPage = () => (
-    <Box sx={{ p: { xs: 2, md: 4 } }}>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
-        Not authorized
-      </Typography>
-      <Typography color="text.secondary">
-        You do not have permission to view this page.
-      </Typography>
-    </Box>
-  );
+  const canManageUsers = true;
+  const canManageProjects = true;
+  const canUpload = true;
+  const canViewDocuments = true;
+  const canVerify = true;
 
   const toggleLabel = sidebarCollapsed ? "توسيع الشريط الجانبي" : "طي الشريط الجانبي";
 
@@ -285,11 +273,11 @@ function App() {
           <Container maxWidth="xl" sx={{ py: 4 }}>
             <Routes>
               <Route path="/" element={<Navigate to="/upload" replace />} />
-              <Route path="/upload" element={canUpload ? <UploadPage /> : <UnauthorizedPage />} />
-              <Route path="/projects/new" element={canManageProjects ? <CreateProjectPage /> : <UnauthorizedPage />} />
-              <Route path="/projects/:projectId/documents" element={canViewDocuments ? <DocumentListPage /> : <UnauthorizedPage />} />
-              <Route path="/users/new" element={canManageUsers ? <CreateUserPage /> : <UnauthorizedPage />} />
-              <Route path="/verify" element={canVerify ? <VerifyPage /> : <UnauthorizedPage />} />
+              <Route path="/upload" element={<UploadPage />} />
+              <Route path="/projects/new" element={<CreateProjectPage />} />
+              <Route path="/projects/:projectId/documents" element={<DocumentListPage />} />
+              <Route path="/users/new" element={<CreateUserPage />} />
+              <Route path="/verify" element={<VerifyPage />} />
             </Routes>
           </Container>
         </Box>
