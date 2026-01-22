@@ -32,8 +32,28 @@ supabase: Client = None
 if SUPABASE_URL and SUPABASE_KEY:
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Use /tmp for ephemeral storage on cloud configurations
-STORAGE_DIR = os.getenv("STORAGE_DIR", os.path.join(BASE_DIR, "storage"))
+# Use a writable storage directory, preferring /tmp on hosted environments.
+def _resolve_storage_dir() -> str:
+    configured = os.getenv("STORAGE_DIR")
+    if configured:
+        return configured
+    candidates = [
+        os.path.join(os.path.sep, "tmp", "docuctrl-storage"),
+        os.path.join(BASE_DIR, "storage"),
+    ]
+    for path in candidates:
+        try:
+            os.makedirs(path, exist_ok=True)
+            test_path = os.path.join(path, ".write_test")
+            with open(test_path, "w") as test_file:
+                test_file.write("ok")
+            os.remove(test_path)
+            return path
+        except OSError:
+            continue
+    return os.path.join(BASE_DIR, "storage")
+
+STORAGE_DIR = _resolve_storage_dir()
 os.makedirs(STORAGE_DIR, exist_ok=True)
 
 def ensure_user_email_column():
