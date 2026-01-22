@@ -103,7 +103,7 @@ STAMP_PADDING = 24  # points (~0.33 inch)
 STAMP_QR_SIZE = 90  # points
 STAMP_LINE_GAP = 12
 STAMP_FONT_SIZE = 10
-STAMP_TEXT_LINES = 3
+STAMP_TEXT_LINES = 1
 STAMP_TEXT_GAP = 10
 STAMP_HEADER_HEIGHT = (
     STAMP_PADDING
@@ -153,16 +153,9 @@ def _make_watermark_pdf(
 
     font_name = _register_arabic_font()
     serial_line = fix_arabic(f"\u0627\u0644\u0631\u0642\u0645 \u0627\u0644\u062a\u0633\u0644\u0633\u0644\u064a: {serial}")
-    owner_line = fix_arabic(f"\u0627\u0644\u062c\u0647\u0629 \u0627\u0644\u0645\u0627\u0644\u0643\u0629: {owner_company_name}")
-    project_line = fix_arabic(f"\u0627\u0633\u0645 \u0627\u0644\u0645\u0634\u0631\u0648\u0639: {project_name}")
-
     c.setFont(font_name, font_size)
 
     c.drawRightString(text_right, text_y, serial_line)
-    text_y -= line_gap
-    c.drawRightString(text_right, text_y, owner_line)
-    text_y -= line_gap
-    c.drawRightString(text_right, text_y, project_line)
 
     c.save()
     packet.seek(0)
