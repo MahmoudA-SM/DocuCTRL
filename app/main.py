@@ -467,13 +467,6 @@ def verify_document(
             "message": "Document not found"
         }
 
-    assignment = db.query(models.UserProjectAssignment).filter(
-        models.UserProjectAssignment.user_id == current_user.id,
-        models.UserProjectAssignment.project_id == doc.project_id,
-    ).first()
-    if not assignment:
-        raise HTTPException(status_code=403, detail="Not authorized for this document")
-
     base_url = str(request.base_url).rstrip("/") if request else ""
     download_url = f"{base_url}/documents/{doc.id}/download"
 
