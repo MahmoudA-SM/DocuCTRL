@@ -1,5 +1,6 @@
 import os
 import shutil
+import logging
 from datetime import datetime, timedelta
 
 from dotenv import load_dotenv, find_dotenv
@@ -10,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from sqlalchemy import inspect, text
+from sqlalchemy.exc import SQLAlchemyError
 from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse, JSONResponse, StreamingResponse
 from urllib.parse import quote
 import urllib.request
@@ -81,9 +83,17 @@ def ensure_document_original_filename_column():
     with database.engine.begin() as conn:
         conn.execute(text("ALTER TABLE documents ADD COLUMN original_filename VARCHAR"))
 
-models.Base.metadata.create_all(bind=database.engine)
-ensure_user_email_column()
-ensure_document_original_filename_column()
+logger = logging.getLogger("docuctrl")
+
+def _initialize_database() -> None:
+    try:
+        models.Base.metadata.create_all(bind=database.engine)
+        ensure_user_email_column()
+        ensure_document_original_filename_column()
+    except SQLAlchemyError as exc:
+        logger.warning("Database initialization skipped: %s", exc)
+
+_initialize_database()
 
 app = FastAPI(title="Document Control System")
 
