@@ -1,5 +1,6 @@
 import io
 import os
+import re
 import segno
 import arabic_reshaper
 import urllib.request
@@ -29,8 +30,11 @@ def create_qr_buffer(data: str) -> io.BytesIO:
 
 
 def generate_serial(owner_code: str, year: int, seq_id: int) -> str:
-
-    return f"{owner_code}-{year}-{seq_id:04d}"
+    normalized = (owner_code or "").upper()
+    safe_code = re.sub(r"[^A-Z0-9]+", "-", normalized).strip("-")
+    if not safe_code:
+        safe_code = "ORG"
+    return f"{safe_code}-{year}-{seq_id:04d}"
 
 
 def _looks_like_ttf(path: str) -> bool:
