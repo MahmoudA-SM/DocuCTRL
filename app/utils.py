@@ -39,11 +39,13 @@ def _register_arabic_font() -> str:
     font_name = "Amiri"
 
     if os.path.exists(font_path):
-
         try:
             pdfmetrics.getFont(font_name)
         except KeyError:
-            pdfmetrics.registerFont(TTFont(font_name, font_path))
+            try:
+                pdfmetrics.registerFont(TTFont(font_name, font_path))
+            except Exception:
+                return "Helvetica"
         return font_name
 
     return "Helvetica"
