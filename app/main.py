@@ -288,7 +288,14 @@ async def upload_document(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    if file.content_type != "application/pdf" or not file.filename.lower().endswith(".pdf"):
+    filename_lower = file.filename.lower()
+    content_type = (file.content_type or "").lower()
+    allowed_content_types = {
+        "application/pdf",
+        "application/x-pdf",
+        "application/octet-stream",
+    }
+    if not filename_lower.endswith(".pdf") or (content_type and content_type not in allowed_content_types):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted")
 
     if user_id is None:
