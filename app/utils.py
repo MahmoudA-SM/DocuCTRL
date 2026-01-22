@@ -2,6 +2,7 @@ import io
 import os
 import segno
 import arabic_reshaper
+import urllib.request
 from bidi.algorithm import get_display
 
 from pypdf import PdfReader, PdfWriter, Transformation
@@ -32,21 +33,65 @@ def generate_serial(owner_code: str, year: int, seq_id: int) -> str:
     return f"{owner_code}-{year}-{seq_id:04d}"
 
 
+def _looks_like_ttf(path: str) -> bool:
+    try:
+        with open(path, "rb") as handle:
+            header = handle.read(4)
+    except OSError:
+        return False
+    return header in (b"\x00\x01\x00\x00", b"OTTO", b"true", b"typ1")
+
+
+def _try_register_font(font_name: str, font_path: str) -> bool:
+    try:
+        pdfmetrics.getFont(font_name)
+        return True
+    except KeyError:
+        try:
+            pdfmetrics.registerFont(TTFont(font_name, font_path))
+            return True
+        except Exception:
+            return False
+
+
+def _download_font(url: str, destination: str) -> bool:
+    try:
+        os.makedirs(os.path.dirname(destination), exist_ok=True)
+        with urllib.request.urlopen(url, timeout=10) as response, open(destination, "wb") as handle:
+            handle.write(response.read())
+        return True
+    except Exception:
+        return False
+
+
 def _register_arabic_font() -> str:
+    font_name = "Amiri"
+    try:
+        pdfmetrics.getFont(font_name)
+        return font_name
+    except KeyError:
+        pass
 
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    font_path = os.path.join(base_dir, "assets", "Amiri-Regular.ttf")
-    font_name = "Amiri"
+    candidates = [
+        os.path.join(base_dir, "assets", "Amiri-Regular.ttf"),
+        "/usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    ]
 
-    if os.path.exists(font_path):
-        try:
-            pdfmetrics.getFont(font_name)
-        except KeyError:
-            try:
-                pdfmetrics.registerFont(TTFont(font_name, font_path))
-            except Exception:
-                return "Helvetica"
-        return font_name
+    for path in candidates:
+        if os.path.exists(path) and _looks_like_ttf(path) and _try_register_font(font_name, path):
+            return font_name
+
+    fallback_path = os.path.join(base_dir, "assets", "Amiri-Regular.ttf")
+    if not _looks_like_ttf(fallback_path):
+        tmp_path = os.path.join("/tmp", "docuctrl-fonts", "Amiri-Regular.ttf")
+        if _download_font(
+            "https://github.com/alif-type/amiri/raw/master/Amiri-Regular.ttf",
+            tmp_path,
+        ) and _looks_like_ttf(tmp_path) and _try_register_font(font_name, tmp_path):
+            return font_name
 
     return "Helvetica"
 
