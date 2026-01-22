@@ -17,6 +17,7 @@ import {
 import {
   getMyProjects,
   getProjectDocuments,
+  getAllDocuments,
   downloadDocument,
 } from "../services/api";
 
@@ -34,7 +35,7 @@ function DocumentListPage() {
       setError("");
       try {
         const [docs, projectList] = await Promise.all([
-          getProjectDocuments(projectId),
+          projectId ? getProjectDocuments(projectId) : getAllDocuments(),
           getMyProjects(),
         ]);
         const sortedDocs = [...docs].sort((a, b) =>
@@ -56,8 +57,11 @@ function DocumentListPage() {
   }, [projectId]);
 
   const projectName = useMemo(() => {
+    if (!projectId) {
+      return null;
+    }
     const project = projects.find((item) => String(item.id) === String(projectId));
-    return project ? project.name : `مشروع رقم ${projectId}`;
+    return project ? project.name : `U.O'O?U^O1 O?U,U. ${projectId}`;
   }, [projects, projectId]);
 
   const handleDownload = async (documentId) => {
@@ -80,7 +84,7 @@ function DocumentListPage() {
       <Card sx={{ borderRadius: 2, border: "1px solid var(--border)" }}>
         <CardContent sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
           <Typography variant="h5" sx={{ fontWeight: 700 }}>
-            مستندات {projectName}
+            {projectName ? `U.O3O?U+O_OO? ${projectName}` : "U.O3O?U+O_OO?"}
           </Typography>
           <Typography color="text.secondary">
             عرض أحدث المستندات لهذا المشروع.
@@ -106,6 +110,7 @@ function DocumentListPage() {
                 <TableRow>
                   <TableCell>الرقم التسلسلي</TableCell>
                   <TableCell>اسم الملف</TableCell>
+                  {!projectId ? <TableCell>OU,O?U?O1</TableCell> : null}
                   <TableCell>تاريخ الرفع</TableCell>
                   <TableCell align="left">الإجراءات</TableCell>
                 </TableRow>
@@ -113,7 +118,7 @@ function DocumentListPage() {
               <TableBody>
                 {documents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} align="center">
+                    <TableCell colSpan={projectId ? 4 : 5} align="center">
                       لا توجد مستندات بعد.
                     </TableCell>
                   </TableRow>
@@ -122,6 +127,7 @@ function DocumentListPage() {
                     <TableRow key={doc.id}>
                       <TableCell>{doc.serial}</TableCell>
                       <TableCell>{doc.filename}</TableCell>
+                      {!projectId ? <TableCell>{doc.project_name || "-"}</TableCell> : null}
                       <TableCell>
                         {doc.upload_date
                           ? new Date(doc.upload_date).toLocaleString("ar")

@@ -135,7 +135,7 @@ function App() {
             {canViewDocuments ? (
               <Button
                 component={Link}
-                to="/projects/1/documents"
+                to="/documents"
                 variant="outlined"
                 fullWidth
                 startIcon={<FolderOpenOutlinedIcon />}
@@ -275,6 +275,7 @@ function App() {
               <Route path="/" element={<Navigate to="/upload" replace />} />
               <Route path="/upload" element={<UploadPage />} />
               <Route path="/projects/new" element={<CreateProjectPage />} />
+              <Route path="/documents" element={<DocumentListPage />} />
               <Route path="/projects/:projectId/documents" element={<DocumentListPage />} />
               <Route path="/users/new" element={<CreateUserPage />} />
               <Route path="/verify" element={<VerifyPage />} />

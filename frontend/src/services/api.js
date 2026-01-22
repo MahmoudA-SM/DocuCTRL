@@ -82,6 +82,11 @@ export const getProjectDocuments = async (projectId) => {
   return response.data;
 };
 
+export const getAllDocuments = async () => {
+  const response = await api.get("/documents");
+  return response.data;
+};
+
 export const verifySerial = async (serial) => {
   const response = await api.get(`/verify/${serial}`);
   return response.data;

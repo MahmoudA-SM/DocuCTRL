@@ -523,6 +523,29 @@ def list_documents(project_id: int, user: models.User = Depends(get_current_user
     ]
 
 
+@app.get("/documents")
+def list_all_documents(user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    docs = (
+        db.query(models.Document, models.Project)
+        .join(models.Project, models.Document.project_id == models.Project.id)
+        .join(models.UserProjectAssignment, models.UserProjectAssignment.project_id == models.Project.id)
+        .filter(models.UserProjectAssignment.user_id == user.id)
+        .order_by(models.Document.id.desc())
+        .all()
+    )
+    return [
+        {
+            "id": doc.id,
+            "serial": doc.serial,
+            "filename": doc.original_filename or doc.filename,
+            "upload_date": doc.upload_date.isoformat() if doc.upload_date else None,
+            "project_id": project.id,
+            "project_name": project.name,
+        }
+        for doc, project in docs
+    ]
+
+
 @app.get("/documents/{document_id}/download")
 def download_document(
     document_id: int,
