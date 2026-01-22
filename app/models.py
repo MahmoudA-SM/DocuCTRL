@@ -34,6 +34,7 @@ class Document(Base):
     id = Column(Integer, doc_id_seq, server_default=doc_id_seq.next_value(), primary_key=True, index=True)
     serial = Column(String, unique=True, index=True)
     filename = Column(String)
+    original_filename = Column(String)
     upload_date = Column(DateTime, server_default=func.now())
     
     project_id = Column(Integer, ForeignKey("projects.id"))

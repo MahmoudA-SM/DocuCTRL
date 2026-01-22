@@ -69,8 +69,19 @@ def ensure_user_email_column():
             conn.execute(text("UPDATE users SET email = username WHERE email IS NULL"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email ON users (email)"))
 
+def ensure_document_original_filename_column():
+    inspector = inspect(database.engine)
+    if "documents" not in inspector.get_table_names():
+        return
+    columns = {col["name"] for col in inspector.get_columns("documents")}
+    if "original_filename" in columns:
+        return
+    with database.engine.begin() as conn:
+        conn.execute(text("ALTER TABLE documents ADD COLUMN original_filename VARCHAR"))
+
 models.Base.metadata.create_all(bind=database.engine)
 ensure_user_email_column()
+ensure_document_original_filename_column()
 
 app = FastAPI(title="Document Control System")
 
@@ -349,11 +360,13 @@ async def upload_document(
         cleaned = "".join(ch if ch.isalnum() or ch in {".", "-", "_"} else "_" for ch in base)
         return cleaned or "document.pdf"
 
-    safe_name = _sanitize_filename(file.filename)
+    original_name = os.path.basename(file.filename or "")
+    safe_name = _sanitize_filename(original_name)
 
 
     new_doc = models.Document(
         filename=safe_name,
+        original_filename=original_name,
         project_id=project_id,
         owner_company_id=owner_company_id,
     )
@@ -491,7 +504,7 @@ def list_documents(project_id: int, user: models.User = Depends(get_current_user
         {
             "id": d.id,
             "serial": d.serial,
-            "filename": d.filename,
+            "filename": d.original_filename or d.filename,
             "upload_date": d.upload_date.isoformat() if d.upload_date else None,
         }
         for d in docs
