@@ -45,9 +45,9 @@ function DocumentListPage() {
         setProjects(projectList);
       } catch (err) {
         if (err.response && err.response.status === 403) {
-          setError("??? ???? ?????? ?????? ??? ??????? ??? ???????.");
+          setError("ليس لديك صلاحية للوصول إلى مستندات هذا المشروع.");
         } else {
-          setError("???? ????? ??????? ???????.");
+          setError("تعذر تحميل مستندات المشروع.");
         }
       } finally {
         setLoading(false);
@@ -61,7 +61,7 @@ function DocumentListPage() {
       return null;
     }
     const project = projects.find((item) => String(item.id) === String(projectId));
-    return project ? project.name : `????? ??? ${projectId}`;
+    return project ? project.name : `مشروع رقم ${projectId}`;
   }, [projects, projectId]);
 
   const handleDownload = async (documentId) => {
@@ -73,7 +73,7 @@ function DocumentListPage() {
       window.open(url, "_blank", "noopener");
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     } catch (err) {
-      setError("???? ????? ???????.");
+      setError("تعذر تنزيل المستند.");
     } finally {
       setDownloadingId(null);
     }
@@ -84,13 +84,13 @@ function DocumentListPage() {
       <Card sx={{ borderRadius: 2, border: "1px solid var(--border)" }}>
         <CardContent sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
           <Typography variant="h5" sx={{ fontWeight: 700 }}>
-            {projectName ? `??????? ${projectName}` : "?????????"}
+            {projectName ? `مستندات ${projectName}` : "المستندات"}
           </Typography>
           <Typography color="text.secondary">
-            ???? ??? ????????? ?????? ???? ???????.
+            راجع سجل المستندات الخاصة بهذا المشروع.
           </Typography>
           <Button component={Link} to="/upload" variant="contained" sx={{ alignSelf: "flex-start" }}>
-            ??? ????? ????
+            رفع مستند جديد
           </Button>
         </CardContent>
       </Card>
@@ -102,24 +102,24 @@ function DocumentListPage() {
           {loading ? (
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               <CircularProgress size={22} />
-              <Typography color="text.secondary">???? ????? ?????????...</Typography>
+              <Typography color="text.secondary">جارٍ تحميل المستندات...</Typography>
             </Box>
           ) : (
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>????? ????????</TableCell>
-                  <TableCell>??? ?????</TableCell>
-                  {!projectId ? <TableCell>???????</TableCell> : null}
-                  <TableCell>????? ?????</TableCell>
-                  <TableCell align="left">?????????</TableCell>
+                  <TableCell>الرقم التسلسلي</TableCell>
+                  <TableCell>اسم الملف</TableCell>
+                  {!projectId ? <TableCell>المشروع</TableCell> : null}
+                  <TableCell>تاريخ الرفع</TableCell>
+                  <TableCell align="left">الإجراءات</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {documents.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={projectId ? 4 : 5} align="center">
-                      ?? ???? ??????? ???.
+                      لا توجد مستندات بعد.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -140,7 +140,7 @@ function DocumentListPage() {
                           onClick={() => handleDownload(doc.id)}
                           disabled={downloadingId === doc.id}
                         >
-                          ?????
+                          تنزيل
                         </Button>
                       </TableCell>
                     </TableRow>
