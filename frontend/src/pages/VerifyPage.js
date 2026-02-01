@@ -285,7 +285,7 @@ function VerifyPage() {
                 onClick={() => handleLoadPreview(verifiedDocumentId, true)}
                 disabled={loadingPreview}
               >
-                {loadingPreview ? "\u062c\u0627\u0631\u064d \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0645\u0639\u0627\u064a\u0646\u0629..." : "\u0639\u0631\u0636 \u0627\u0644\u0645\u0644\u0641"}
+                {loadingPreview ? "جارٍ تحميل المعاينة..." : "\u0639\u0631\u0636 \u0627\u0644\u0645\u0644\u0641"}
               </Button>
             ) : null}
           </CardContent>
@@ -311,7 +311,7 @@ function VerifyPage() {
             </Box>
           ) : previewUrl ? (
             <iframe
-              title="\u0645\u0639\u0627\u064a\u0646\u0629 \u0627\u0644\u0645\u0633\u062a\u0646\u062f"
+              title="معاينة المستند"
               src={previewUrl}
               style={{ width: "100%", height: "70vh", border: "none" }}
             />
