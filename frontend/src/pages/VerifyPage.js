@@ -6,15 +6,10 @@ import {
   Button,
   Card,
   CardContent,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  IconButton,
   TextField,
   Typography,
 } from "@mui/material";
 import jsQR from "jsqr";
-import CloseIcon from "@mui/icons-material/Close";
 import { downloadDocument, verifySerial } from "../services/api";
 
 function VerifyPage() {
@@ -29,18 +24,8 @@ function VerifyPage() {
   const [serial, setSerial] = useState("");
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
-  const [previewUrl, setPreviewUrl] = useState("");
-  const [previewOpen, setPreviewOpen] = useState(false);
   const [verifiedDocumentId, setVerifiedDocumentId] = useState(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
-
-  useEffect(() => {
-    return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
-    };
-  }, [previewUrl]);
 
   const stopCamera = () => {
     if (rafRef.current) {
@@ -74,7 +59,6 @@ function VerifyPage() {
     }
     setStatus("verifying");
     setError("");
-    setPreviewUrl("");
     setVerifiedDocumentId(null);
     try {
       const result = await verifySerial(normalized);
@@ -90,37 +74,32 @@ function VerifyPage() {
       }
       setVerifiedDocumentId(result.document_id);
       setStatus("verified");
-      await handleLoadPreview(result.document_id, true);
     } catch (err) {
       setStatus("error");
       setError("تعذر التحقق من المستند.");
     }
   };
 
-  const handleLoadPreview = async (documentId = verifiedDocumentId, open = false) => {
-    if (!documentId) {
+  const handleLoadPreview = async () => {
+    if (!verifiedDocumentId) {
       return;
     }
     setLoadingPreview(true);
     setError("");
-    if (open) {
-      setPreviewOpen(true);
-    }
     try {
-      const blob = await downloadDocument(documentId);
+      const blob = await downloadDocument(verifiedDocumentId);
       const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
+      window.open(url, "_blank", "noopener");
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
     } catch (err) {
-      setError("???? ????? ????????.");
+      setError("\u062a\u0639\u0630\u0631 \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0645\u0644\u0641.");
     } finally {
       setLoadingPreview(false);
     }
   };
 
-  const handleClosePreview = () => {
-    setPreviewOpen(false);
-    setPreviewUrl("");
-  };
+
+
 
   useEffect(() => {
     const initialSerial = searchParams.get("serial");
@@ -133,7 +112,6 @@ function VerifyPage() {
   const startCamera = async () => {
     setError("");
     setStatus("scanning");
-    setPreviewUrl("");
 
     if (!navigator.mediaDevices?.getUserMedia) {
       setStatus("error");
@@ -279,49 +257,20 @@ function VerifyPage() {
             <Button variant="contained" onClick={() => handleVerify(serial)} disabled={status === "verifying"}>
               تحقق
             </Button>
-            {status === "verified" && !previewUrl ? (
+            {status === "verified" ? (
               <Button
                 variant="outlined"
-                onClick={() => handleLoadPreview(verifiedDocumentId, true)}
+                onClick={handleLoadPreview}
                 disabled={loadingPreview}
               >
-                {loadingPreview ? "جارٍ تحميل المعاينة..." : "\u0639\u0631\u0636 \u0627\u0644\u0645\u0644\u0641"}
+                {loadingPreview ? "\u062c\u0627\u0631\u064d \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0645\u0639\u0627\u064a\u0646\u0629..." : "\u0639\u0631\u0636 \u0627\u0644\u0645\u0644\u0641"}
               </Button>
             ) : null}
           </CardContent>
         </Card>
       </Box>
 
-      <Dialog
-        open={previewOpen}
-        onClose={handleClosePreview}
-        fullWidth
-        maxWidth="lg"
-      >
-        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          \u0645\u0639\u0627\u064a\u0646\u0629 \u0627\u0644\u0645\u0633\u062a\u0646\u062f
-          <IconButton aria-label={"\u0625\u063a\u0644\u0627\u0642"} onClick={handleClosePreview} edge="end">
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ p: 0, minHeight: 520 }}>
-          {loadingPreview ? (
-            <Box sx={{ p: 4, textAlign: "center" }}>
-              <Typography color="text.secondary">\u062c\u0627\u0631\u064d \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0645\u0639\u0627\u064a\u0646\u0629...</Typography>
-            </Box>
-          ) : previewUrl ? (
-            <iframe
-              title="معاينة المستند"
-              src={previewUrl}
-              style={{ width: "100%", height: "70vh", border: "none" }}
-            />
-          ) : (
-            <Box sx={{ p: 4, textAlign: "center" }}>
-              <Typography color="text.secondary">\u0644\u0627 \u062a\u0648\u062c\u062f \u0645\u0639\u0627\u064a\u0646\u0629 \u0645\u062a\u0627\u062d\u0629.</Typography>
-            </Box>
-          )}
-        </DialogContent>
-      </Dialog>
+
     </Box>
   );
 }
