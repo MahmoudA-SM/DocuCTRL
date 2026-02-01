@@ -285,7 +285,7 @@ function VerifyPage() {
                 onClick={() => handleLoadPreview(verifiedDocumentId, true)}
                 disabled={loadingPreview}
               >
-                {loadingPreview ? "جارٍ تحميل المعاينة..." : "عرض الملف"}
+                {loadingPreview ? "\u062c\u0627\u0631\u064d \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0645\u0639\u0627\u064a\u0646\u0629..." : "\u0639\u0631\u0636 \u0627\u0644\u0645\u0644\u0641"}
               </Button>
             ) : null}
           </CardContent>
@@ -299,7 +299,7 @@ function VerifyPage() {
         maxWidth="lg"
       >
         <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          ?????? ???????
+          \u0645\u0639\u0627\u064a\u0646\u0629 \u0627\u0644\u0645\u0633\u062a\u0646\u062f
           <IconButton aria-label={"\u0625\u063a\u0644\u0627\u0642"} onClick={handleClosePreview} edge="end">
             <CloseIcon />
           </IconButton>
@@ -307,17 +307,17 @@ function VerifyPage() {
         <DialogContent sx={{ p: 0, minHeight: 520 }}>
           {loadingPreview ? (
             <Box sx={{ p: 4, textAlign: "center" }}>
-              <Typography color="text.secondary">???? ????? ????????...</Typography>
+              <Typography color="text.secondary">\u062c\u0627\u0631\u064d \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0645\u0639\u0627\u064a\u0646\u0629...</Typography>
             </Box>
           ) : previewUrl ? (
             <iframe
-              title="?????? ???????"
+              title="\u0645\u0639\u0627\u064a\u0646\u0629 \u0627\u0644\u0645\u0633\u062a\u0646\u062f"
               src={previewUrl}
               style={{ width: "100%", height: "70vh", border: "none" }}
             />
           ) : (
             <Box sx={{ p: 4, textAlign: "center" }}>
-              <Typography color="text.secondary">?? ???? ?????? ?????.</Typography>
+              <Typography color="text.secondary">\u0644\u0627 \u062a\u0648\u062c\u062f \u0645\u0639\u0627\u064a\u0646\u0629 \u0645\u062a\u0627\u062d\u0629.</Typography>
             </Box>
           )}
         </DialogContent>
