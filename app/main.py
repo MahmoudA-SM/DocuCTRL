@@ -131,7 +131,7 @@ def login_page():
     login_path = os.path.join(BASE_DIR, "frontend", "login.html")
     if not os.path.exists(login_path):
         return "Login page not found."
-    with open(login_path, "r") as f:
+    with open(login_path, "r", encoding="utf-8") as f:
         return f.read()
 
 @app.post("/token")
@@ -206,10 +206,6 @@ def read_root(request: Request, db: Session = Depends(get_db)):
         )
         return resp
 
-@app.get("/")
-def read_root():
-    return RedirectResponse(url="/docs")
-
 @app.get("/me")
 def get_me(user: models.User = Depends(get_current_user)):
     return {"id": user.id, "email": user.email}
@@ -240,13 +236,23 @@ def register_user(
 
 @app.get("/me/projects")
 def get_my_projects(user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    projects = (
-        db.query(models.Project)
-        .join(models.UserProjectAssignment, models.UserProjectAssignment.project_id == models.Project.id)
-        .filter(models.UserProjectAssignment.user_id == user.id)
-        .order_by(models.Project.name.asc())
-        .all()
-    )
+    try:
+        projects = (
+            db.query(models.Project)
+            .join(models.UserProjectAssignment, models.UserProjectAssignment.project_id == models.Project.id)
+            .filter(models.UserProjectAssignment.user_id == user.id)
+            .order_by(models.Project.name.asc())
+            .all()
+        )
+    except SQLAlchemyError as exc:
+        logger.exception("Failed to load user projects for user_id=%s", user.id)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "PROJECTS_QUERY_FAILED",
+                "message": "تعذر تحميل المشروعات من قاعدة البيانات.",
+            },
+        )
     return [
         {
             "id": project.id,
@@ -472,17 +478,25 @@ def verify_document(
     base_url = str(request.base_url).rstrip("/") if request else ""
     download_url = f"{base_url}/documents/{doc.id}/download"
 
-    # Check existence
+    # Check existence (Supabase only)
     exists = False
+    storage_path = None
     if supabase:
         try:
-            res = supabase.storage.from_(SUPABASE_BUCKET).list(path="", options={"search": f"{doc.serial}_{doc.filename}"})
-            exists = len(res) > 0 if res else False
-        except:
+            res = supabase.storage.from_(SUPABASE_BUCKET).list(
+                path="",
+                options={"search": f"{doc.serial}_"},
+            )
+            if res:
+                # Prefer exact filename match when available, otherwise take the first serial match.
+                exact_name = f"{doc.serial}_{doc.filename}"
+                match = next((item for item in res if item.get("name") == exact_name), None)
+                storage_path = (match or res[0]).get("name")
+                exists = True
+            else:
+                exists = False
+        except Exception:
             exists = False
-    else:
-        file_path = os.path.join(STORAGE_DIR, f"{doc.serial}_{doc.filename}")
-        exists = os.path.exists(file_path)
 
     return {
         "valid": True,
@@ -492,6 +506,7 @@ def verify_document(
         "project_id": doc.project_id,
         "owner_company_id": doc.owner_company_id,
         "file_exists": exists,
+        "storage_path": storage_path,
         "download_url": download_url,
     }
 
@@ -602,17 +617,39 @@ def download_document(
     )
     
     if supabase:
+        signed_url = None
         try:
             res = supabase.storage.from_(SUPABASE_BUCKET).create_signed_url(
                 filename,
                 SUPABASE_SIGNED_URL_TTL,
             )
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to create signed URL: {str(e)}")
+            if isinstance(res, dict):
+                signed_url = res.get("signedURL") or res.get("signedUrl") or res.get("signed_url")
+        except Exception:
+            signed_url = None
 
-        signed_url = None
-        if isinstance(res, dict):
-            signed_url = res.get("signedURL") or res.get("signedUrl") or res.get("signed_url")
+        if not signed_url:
+            # Fallback: find by serial prefix if filename mismatch.
+            try:
+                matches = supabase.storage.from_(SUPABASE_BUCKET).list(
+                    path="",
+                    options={"search": f"{doc.serial}_"},
+                )
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Failed to locate file: {str(e)}")
+
+            if matches:
+                storage_name = matches[0].get("name")
+                try:
+                    res = supabase.storage.from_(SUPABASE_BUCKET).create_signed_url(
+                        storage_name,
+                        SUPABASE_SIGNED_URL_TTL,
+                    )
+                except Exception as e:
+                    raise HTTPException(status_code=500, detail=f"Failed to create signed URL: {str(e)}")
+                if isinstance(res, dict):
+                    signed_url = res.get("signedURL") or res.get("signedUrl") or res.get("signed_url")
+
         if not signed_url:
             raise HTTPException(status_code=500, detail="Signed URL generation failed")
         def _stream_from_url(url: str):
@@ -630,15 +667,4 @@ def download_document(
             _stream_from_url(signed_url),
             media_type="application/pdf",
             headers={"Content-Disposition": content_disposition},
-        )
-    else:
-        file_path = os.path.join(STORAGE_DIR, filename)
-        if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="Stamped file missing on disk")
-
-        return FileResponse(
-            path=file_path,
-            media_type="application/pdf",
-            filename=filename,
-            headers={"Content-Disposition": content_disposition}
         )

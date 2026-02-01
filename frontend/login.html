@@ -116,7 +116,11 @@
                     }
                     localStorage.setItem("access_token", data.access_token);
                     const tokenParam = encodeURIComponent(data.access_token);
-                    window.location.href = `/?access_token=${tokenParam}`;
+                    const isLocalBackend =
+                        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") &&
+                        window.location.port === "7860";
+                    const targetOrigin = isLocalBackend ? "http://localhost:3000" : window.location.origin;
+                    window.location.href = `${targetOrigin}/?access_token=${tokenParam}`;
                 } else {
                     errorMsg.style.display = 'block';
                 }

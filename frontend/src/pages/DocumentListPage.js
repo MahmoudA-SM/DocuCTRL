@@ -12,6 +12,7 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from "@mui/material";
 import {
@@ -30,6 +31,12 @@ function DocumentListPage() {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
   const [downloadingId, setDownloadingId] = useState(null);
+  const [filters, setFilters] = useState({
+    serial: "",
+    filename: "",
+    project: "",
+    uploadDate: "",
+  });
 
   useEffect(() => {
     const load = async () => {
@@ -65,6 +72,44 @@ function DocumentListPage() {
     const project = projects.find((item) => String(item.id) === String(projectId));
     return project ? project.name : `مشروع رقم ${projectId}`;
   }, [projects, projectId]);
+
+  const filteredDocuments = useMemo(() => {
+    const serialFilter = filters.serial.trim().toLowerCase();
+    const filenameFilter = filters.filename.trim().toLowerCase();
+    const projectFilter = filters.project.trim().toLowerCase();
+    const dateFilter = filters.uploadDate.trim().toLowerCase();
+
+    if (!serialFilter && !filenameFilter && !projectFilter && !dateFilter) {
+      return documents;
+    }
+
+    return documents.filter((doc) => {
+      const serialValue = String(doc.serial ?? "").toLowerCase();
+      const filenameValue = String(doc.filename ?? "").toLowerCase();
+      const projectValue = String(doc.project_name ?? "").toLowerCase();
+      const rawDateValue = String(doc.upload_date ?? "").toLowerCase();
+      const localizedDateValue = doc.upload_date
+        ? new Date(doc.upload_date).toLocaleString("ar").toLowerCase()
+        : "";
+
+      const serialMatch = serialFilter ? serialValue.includes(serialFilter) : true;
+      const filenameMatch = filenameFilter ? filenameValue.includes(filenameFilter) : true;
+      const projectMatch = projectFilter ? projectValue.includes(projectFilter) : true;
+      const dateMatch = dateFilter
+        ? rawDateValue.includes(dateFilter) || localizedDateValue.includes(dateFilter)
+        : true;
+
+      return serialMatch && filenameMatch && projectMatch && dateMatch;
+    });
+  }, [documents, filters]);
+
+  const handleFilterChange = (key) => (event) => {
+    const { value } = event.target;
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
 
   const handleDownload = async (documentId) => {
     setDownloadingId(documentId);
@@ -142,6 +187,51 @@ function DocumentListPage() {
                   <TableCell>تاريخ الرفع</TableCell>
                   <TableCell align="left">الإجراءات</TableCell>
                 </TableRow>
+                <TableRow>
+                  <TableCell>
+                    <TextField
+                      value={filters.serial}
+                      onChange={handleFilterChange("serial")}
+                      placeholder={"\u0627\u0628\u062d\u062b"}
+                      variant="outlined"
+                      size="small"
+                      fullWidth
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <TextField
+                      value={filters.filename}
+                      onChange={handleFilterChange("filename")}
+                      placeholder={"\u0627\u0628\u062d\u062b"}
+                      variant="outlined"
+                      size="small"
+                      fullWidth
+                    />
+                  </TableCell>
+                  {!projectId ? (
+                    <TableCell>
+                      <TextField
+                        value={filters.project}
+                        onChange={handleFilterChange("project")}
+                        placeholder={"\u0627\u0628\u062d\u062b"}
+                        variant="outlined"
+                        size="small"
+                        fullWidth
+                      />
+                    </TableCell>
+                  ) : null}
+                  <TableCell>
+                    <TextField
+                      value={filters.uploadDate}
+                      onChange={handleFilterChange("uploadDate")}
+                      placeholder={"\u0627\u0628\u062d\u062b"}
+                      variant="outlined"
+                      size="small"
+                      fullWidth
+                    />
+                  </TableCell>
+                  <TableCell />
+                </TableRow>
               </TableHead>
               <TableBody>
                 {documents.length === 0 ? (
@@ -150,8 +240,14 @@ function DocumentListPage() {
                       لا توجد مستندات بعد.
                     </TableCell>
                   </TableRow>
+                ) : filteredDocuments.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={projectId ? 4 : 5} align="center">
+                      ?? ???? ??????? ??????.
+                    </TableCell>
+                  </TableRow>
                 ) : (
-                  documents.map((doc) => (
+                  filteredDocuments.map((doc) => (
                     <TableRow key={doc.id}>
                       <TableCell>{doc.serial}</TableCell>
                       <TableCell>{doc.filename}</TableCell>

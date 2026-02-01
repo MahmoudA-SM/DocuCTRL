@@ -6,11 +6,15 @@ import {
   Button,
   Card,
   CardContent,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
   TextField,
   Typography,
 } from "@mui/material";
 import jsQR from "jsqr";
-import PdfPreview from "../components/PdfPreview";
+import CloseIcon from "@mui/icons-material/Close";
 import { downloadDocument, verifySerial } from "../services/api";
 
 function VerifyPage() {
@@ -26,6 +30,9 @@ function VerifyPage() {
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [verifiedDocumentId, setVerifiedDocumentId] = useState(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -68,6 +75,7 @@ function VerifyPage() {
     setStatus("verifying");
     setError("");
     setPreviewUrl("");
+    setVerifiedDocumentId(null);
     try {
       const result = await verifySerial(normalized);
       if (!result.valid) {
@@ -80,14 +88,38 @@ function VerifyPage() {
         setError("الملف غير متوفر في التخزين.");
         return;
       }
-      const blob = await downloadDocument(result.document_id);
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
+      setVerifiedDocumentId(result.document_id);
       setStatus("verified");
+      await handleLoadPreview(result.document_id, true);
     } catch (err) {
       setStatus("error");
       setError("تعذر التحقق من المستند.");
     }
+  };
+
+  const handleLoadPreview = async (documentId = verifiedDocumentId, open = false) => {
+    if (!documentId) {
+      return;
+    }
+    setLoadingPreview(true);
+    setError("");
+    if (open) {
+      setPreviewOpen(true);
+    }
+    try {
+      const blob = await downloadDocument(documentId);
+      const url = URL.createObjectURL(blob);
+      setPreviewUrl(url);
+    } catch (err) {
+      setError("???? ????? ????????.");
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
+  const handleClosePreview = () => {
+    setPreviewOpen(false);
+    setPreviewUrl("");
   };
 
   useEffect(() => {
@@ -247,11 +279,49 @@ function VerifyPage() {
             <Button variant="contained" onClick={() => handleVerify(serial)} disabled={status === "verifying"}>
               تحقق
             </Button>
+            {status === "verified" && !previewUrl ? (
+              <Button
+                variant="outlined"
+                onClick={() => handleLoadPreview(verifiedDocumentId, true)}
+                disabled={loadingPreview}
+              >
+                {loadingPreview ? "جارٍ تحميل المعاينة..." : "عرض الملف"}
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       </Box>
 
-      <PdfPreview url={previewUrl} />
+      <Dialog
+        open={previewOpen}
+        onClose={handleClosePreview}
+        fullWidth
+        maxWidth="lg"
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          ?????? ???????
+          <IconButton aria-label={"\u0625\u063a\u0644\u0627\u0642"} onClick={handleClosePreview} edge="end">
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0, minHeight: 520 }}>
+          {loadingPreview ? (
+            <Box sx={{ p: 4, textAlign: "center" }}>
+              <Typography color="text.secondary">???? ????? ????????...</Typography>
+            </Box>
+          ) : previewUrl ? (
+            <iframe
+              title="?????? ???????"
+              src={previewUrl}
+              style={{ width: "100%", height: "70vh", border: "none" }}
+            />
+          ) : (
+            <Box sx={{ p: 4, textAlign: "center" }}>
+              <Typography color="text.secondary">?? ???? ?????? ?????.</Typography>
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }
