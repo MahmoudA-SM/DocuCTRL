@@ -13,6 +13,7 @@ import VerifyPage from "./pages/VerifyPage";
 import CreateProjectPage from "./pages/CreateProjectPage";
 import CreateUserPage from "./pages/CreateUserPage";
 import ManageRolesPage from "./pages/ManageRolesPage";
+import AdminUsersPage from "./pages/AdminUsersPage";
 import { getMe } from "./services/api";
 
 function App() {
@@ -203,6 +204,29 @@ function App() {
             {canManageUsers ? (
               <Button
                 component={Link}
+                to="/admin/users"
+                variant="outlined"
+                fullWidth
+                startIcon={<PersonAddAltIcon />}
+                title={sidebarCollapsed ? "جميع المستخدمين" : undefined}
+                aria-label={sidebarCollapsed ? "جميع المستخدمين" : undefined}
+                sx={{
+                  justifyContent: sidebarCollapsed ? "center" : "flex-start",
+                  px: sidebarCollapsed ? 1 : 2,
+                  minWidth: sidebarCollapsed ? 44 : "auto",
+                  height: sidebarCollapsed ? 44 : "auto",
+                  borderRadius: sidebarCollapsed ? 2.5 : 1.5,
+                  "& .MuiButton-startIcon": {
+                    margin: 0,
+                  },
+                }}
+              >
+                {sidebarCollapsed ? "" : "جميع المستخدمين"}
+              </Button>
+            ) : null}
+            {canManageUsers ? (
+              <Button
+                component={Link}
                 to="/roles"
                 variant="outlined"
                 fullWidth
@@ -280,6 +304,7 @@ function App() {
               <Route path="/documents" element={<DocumentListPage />} />
               <Route path="/projects/:projectId/documents" element={<DocumentListPage />} />
               <Route path="/users/new" element={<CreateUserPage />} />
+              <Route path="/admin/users" element={<AdminUsersPage />} />
               <Route path="/roles" element={<ManageRolesPage />} />
               <Route path="/verify" element={<VerifyPage />} />
             </Routes>

@@ -80,6 +80,11 @@ export const setUserPermissionsForProject = async ({ projectId, userId, permissi
   return response.data;
 };
 
+export const getAdminUsers = async () => {
+  const response = await api.get("/admin/users");
+  return response.data;
+};
+
 export const assignUserRoleToProject = async ({ projectId, userId, roleName }) => {
   const response = await api.post(`/projects/${projectId}/users/${userId}/roles`, {
     role_name: roleName,

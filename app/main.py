@@ -515,6 +515,58 @@ def get_user_permissions_for_project(
     }
 
 
+@app.get("/admin/users")
+def list_all_users_admin(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    has_admin_perm = db.query(models.UserPermission).join(
+        models.Permission,
+        models.UserPermission.permission_id == models.Permission.id,
+    ).filter(
+        models.UserPermission.user_id == current_user.id,
+        models.Permission.name == Permissions.ADMIN_ALL,
+    ).first()
+    has_admin_role = db.query(models.UserRole).join(
+        models.Role,
+        models.UserRole.role_id == models.Role.id,
+    ).filter(
+        models.UserRole.user_id == current_user.id,
+        models.Role.name == "admin",
+    ).first()
+    if not has_admin_perm and not has_admin_role:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    users = db.query(models.User).order_by(models.User.email.asc()).all()
+    result = []
+    for user in users:
+        role_rows = db.query(models.UserRole, models.Role).join(
+            models.Role, models.UserRole.role_id == models.Role.id
+        ).filter(models.UserRole.user_id == user.id).all()
+        perm_rows = db.query(models.UserPermission, models.Permission).join(
+            models.Permission, models.UserPermission.permission_id == models.Permission.id
+        ).filter(models.UserPermission.user_id == user.id).all()
+
+        projects = {}
+        for role_assignment, role in role_rows:
+            key = role_assignment.project_id
+            entry = projects.setdefault(key, {"project_id": key, "roles": [], "permissions": []})
+            entry["roles"].append(role.name)
+        for perm_assignment, perm in perm_rows:
+            key = perm_assignment.project_id
+            entry = projects.setdefault(key, {"project_id": key, "roles": [], "permissions": []})
+            entry["permissions"].append(perm.name)
+
+        result.append(
+            {
+                "id": user.id,
+                "email": user.email,
+                "projects": list(projects.values()),
+            }
+        )
+    return result
+
+
 class UserPermissionUpdate(BaseModel):
     permissions: list[str]
 
