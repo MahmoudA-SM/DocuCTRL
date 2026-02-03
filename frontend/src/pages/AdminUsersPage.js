@@ -20,8 +20,8 @@ function AdminUsersPage() {
       setLoading(true);
       setError("");
       try {
-        const data = await getAdminUsers();
-        setUsers(data);
+        const usersData = await getAdminUsers();
+        setUsers(usersData);
       } catch (err) {
         const message = err?.response?.data?.detail || "تعذر تحميل المستخدمين.";
         setError(message);

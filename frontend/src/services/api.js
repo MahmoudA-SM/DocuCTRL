@@ -85,6 +85,16 @@ export const getAdminUsers = async () => {
   return response.data;
 };
 
+export const assignUserToProject = async ({ projectId, userId }) => {
+  const response = await api.post(`/projects/${projectId}/users/${userId}/assign`);
+  return response.data;
+};
+
+export const removeUserFromProject = async ({ projectId, userId }) => {
+  const response = await api.delete(`/projects/${projectId}/users/${userId}/assign`);
+  return response.data;
+};
+
 export const assignUserRoleToProject = async ({ projectId, userId, roleName }) => {
   const response = await api.post(`/projects/${projectId}/users/${userId}/roles`, {
     role_name: roleName,

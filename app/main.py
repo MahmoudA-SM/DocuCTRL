@@ -515,6 +515,54 @@ def get_user_permissions_for_project(
     }
 
 
+@app.post("/projects/{project_id}/users/{user_id}/assign")
+def assign_user_to_project(
+    project_id: int,
+    user_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not has_permission(db, current_user.id, Permissions.USER_MANAGE, project_id):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    existing = db.query(models.UserProjectAssignment).filter(
+        models.UserProjectAssignment.user_id == user_id,
+        models.UserProjectAssignment.project_id == project_id,
+    ).first()
+    if existing:
+        return {"status": "already_assigned", "user_id": user_id, "project_id": project_id}
+
+    db.add(models.UserProjectAssignment(user_id=user_id, project_id=project_id))
+    db.commit()
+    return {"status": "assigned", "user_id": user_id, "project_id": project_id}
+
+
+@app.delete("/projects/{project_id}/users/{user_id}/assign")
+def remove_user_from_project(
+    project_id: int,
+    user_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not has_permission(db, current_user.id, Permissions.USER_MANAGE, project_id):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    assignment = db.query(models.UserProjectAssignment).filter(
+        models.UserProjectAssignment.user_id == user_id,
+        models.UserProjectAssignment.project_id == project_id,
+    ).first()
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    db.delete(assignment)
+    db.commit()
+    return {"status": "removed", "user_id": user_id, "project_id": project_id}
+
+
 @app.get("/admin/users")
 def list_all_users_admin(
     current_user: models.User = Depends(get_current_user),

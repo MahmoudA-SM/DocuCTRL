@@ -17,11 +17,13 @@ import {
   Typography,
 } from "@mui/material";
 import {
+  assignUserToProject,
   getMyProjects,
   getPermissions,
   getRolePresets,
   getUserPermissionsForProject,
   getVisibleUsers,
+  removeUserFromProject,
   setUserPermissionsForProject,
 } from "../services/api";
 
@@ -185,6 +187,49 @@ function ManageRolesPage() {
     }
   };
 
+  const handleAssignUser = async () => {
+    setError("");
+    setSuccess("");
+    if (!selection.projectId || !selection.userId) {
+      setError("اختر مشروعًا ومستخدمًا أولاً.");
+      return;
+    }
+    try {
+      await assignUserToProject({
+        projectId: selection.projectId,
+        userId: selection.userId,
+      });
+      setSuccess("تم تعيين المستخدم للمشروع.");
+      const usersData = await getVisibleUsers(selection.projectId);
+      setUsers(usersData);
+    } catch (err) {
+      const message = err?.response?.data?.detail || "تعذر تعيين المستخدم.";
+      setError(message);
+    }
+  };
+
+  const handleRemoveUser = async () => {
+    setError("");
+    setSuccess("");
+    if (!selection.projectId || !selection.userId) {
+      setError("اختر مشروعًا ومستخدمًا أولاً.");
+      return;
+    }
+    try {
+      await removeUserFromProject({
+        projectId: selection.projectId,
+        userId: selection.userId,
+      });
+      setSuccess("تمت إزالة المستخدم من المشروع.");
+      const usersData = await getVisibleUsers(selection.projectId);
+      setUsers(usersData);
+      setSelection((prev) => ({ ...prev, userId: "" }));
+    } catch (err) {
+      const message = err?.response?.data?.detail || "تعذر إزالة المستخدم.";
+      setError(message);
+    }
+  };
+
   const selectedUser = users.find((user) => String(user.id) === String(selection.userId));
 
   return (
@@ -267,6 +312,12 @@ multi‑line comment.
           </Stack>
 
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            <Button variant="outlined" onClick={handleAssignUser}>
+              تعيين للمشروع
+            </Button>
+            <Button variant="outlined" color="error" onClick={handleRemoveUser}>
+              إزالة من المشروع
+            </Button>
             <Button variant="outlined" onClick={handleApplyPreset} disabled={!selection.preset}>
               تطبيق القالب
             </Button>
