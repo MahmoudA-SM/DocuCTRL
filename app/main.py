@@ -403,16 +403,28 @@ def list_visible_users(
 ):
     if project_id is None:
         raise HTTPException(status_code=400, detail="project_id is required")
-    if not has_permission(db, current_user.id, Permissions.USER_READ, project_id):
+    current_perms = get_user_permissions(db, current_user.id, project_id)
+    has_admin_perm = Permissions.ADMIN_ALL in current_perms
+    has_admin_role = db.query(models.UserRole).join(
+        models.Role, models.UserRole.role_id == models.Role.id
+    ).filter(
+        models.UserRole.user_id == current_user.id,
+        models.UserRole.project_id == project_id,
+        models.Role.name == "admin",
+    ).first()
+    if not has_admin_perm and not has_admin_role and Permissions.USER_READ not in current_perms:
         raise HTTPException(status_code=403, detail="Permission denied")
 
-    users = (
-        db.query(models.User)
-        .join(models.UserProjectAssignment, models.UserProjectAssignment.user_id == models.User.id)
-        .filter(models.UserProjectAssignment.project_id == project_id)
-        .order_by(models.User.email.asc())
-        .all()
-    )
+    if has_admin_perm or has_admin_role:
+        users = db.query(models.User).order_by(models.User.email.asc()).all()
+    else:
+        users = (
+            db.query(models.User)
+            .join(models.UserProjectAssignment, models.UserProjectAssignment.user_id == models.User.id)
+            .filter(models.UserProjectAssignment.project_id == project_id)
+            .order_by(models.User.email.asc())
+            .all()
+        )
     visible = []
     for user in users:
         if user.id == current_user.id:
