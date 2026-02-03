@@ -2,13 +2,11 @@ import bcrypt
 from app import auth, database, models
 from app import main
 
-# Test 1: Generate a hash and verify it
 password = "password123"
 hashed = auth.get_password_hash(password)
 print(f"Generated hash: {hashed}")
 print(f"Verification result: {auth.verify_password(password, hashed)}")
 
-# Test 2: Check what's in the database
 db = database.SessionLocal()
 user = db.query(models.User).filter(models.User.email == "admin@example.com").first()
 if user:

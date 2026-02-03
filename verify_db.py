@@ -3,17 +3,11 @@ from sqlalchemy import text
 
 db = database.SessionLocal()
 
-# Check if column exists
-result = db.execute(text("""
-    SELECT column_name 
-    FROM information_schema.columns 
-    WHERE table_name = 'users'
-"""))
+result = db.execute(text())
 print("Columns in users table:")
 for row in result:
     print(f"  - {row[0]}")
 
-# Check users
 result = db.execute(text("SELECT id, email, hashed_password FROM users"))
 print("\nUsers in database:")
 for row in result:

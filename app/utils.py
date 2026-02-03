@@ -99,8 +99,8 @@ def _register_arabic_font() -> str:
 
     return "Helvetica"
 
-STAMP_PADDING = 24  # points (~0.33 inch)
-STAMP_QR_SIZE = 90  # points
+STAMP_PADDING = 24
+STAMP_QR_SIZE = 90
 STAMP_LINE_GAP = 12
 STAMP_FONT_SIZE = 10
 STAMP_TEXT_LINES = 1

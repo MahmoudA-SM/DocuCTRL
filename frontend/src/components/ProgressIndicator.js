@@ -1,4 +1,4 @@
-import { Box, CircularProgress, Typography } from "@mui/material";
+﻿import { Box, CircularProgress, Typography } from "@mui/material";
 
 const labels = {
   uploading: "جارٍ رفع الملف",

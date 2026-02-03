@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   Alert,
@@ -192,7 +192,7 @@ function DocumentListPage() {
                     <TextField
                       value={filters.serial}
                       onChange={handleFilterChange("serial")}
-                      placeholder={"\u0627\u0628\u062d\u062b"}
+                      placeholder={"ابحث"}
                       variant="outlined"
                       size="small"
                       fullWidth
@@ -202,7 +202,7 @@ function DocumentListPage() {
                     <TextField
                       value={filters.filename}
                       onChange={handleFilterChange("filename")}
-                      placeholder={"\u0627\u0628\u062d\u062b"}
+                      placeholder={"ابحث"}
                       variant="outlined"
                       size="small"
                       fullWidth
@@ -213,7 +213,7 @@ function DocumentListPage() {
                       <TextField
                         value={filters.project}
                         onChange={handleFilterChange("project")}
-                        placeholder={"\u0627\u0628\u062d\u062b"}
+                        placeholder={"ابحث"}
                         variant="outlined"
                         size="small"
                         fullWidth
@@ -224,7 +224,7 @@ function DocumentListPage() {
                     <TextField
                       value={filters.uploadDate}
                       onChange={handleFilterChange("uploadDate")}
-                      placeholder={"\u0627\u0628\u062d\u062b"}
+                      placeholder={"ابحث"}
                       variant="outlined"
                       size="small"
                       fullWidth
@@ -243,7 +243,7 @@ function DocumentListPage() {
                 ) : filteredDocuments.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={projectId ? 4 : 5} align="center">
-                      ?? ???? ??????? ??????.
+                      لا توجد نتائج مطابقة.
                     </TableCell>
                   </TableRow>
                 ) : (

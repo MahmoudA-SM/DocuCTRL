@@ -8,7 +8,6 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from . import models, database
 
-# Constants
 SECRET_KEY = os.getenv("JWT_SECRET")
 if not SECRET_KEY:
     raise RuntimeError("JWT_SECRET must be set for authentication to work safely.")
@@ -58,7 +57,6 @@ def _get_user_from_token(token: str, db: Session) -> models.User:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user
 
-# Dependency for protecting routes
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.User:
     auth_header = request.headers.get("Authorization", "")
     token = None

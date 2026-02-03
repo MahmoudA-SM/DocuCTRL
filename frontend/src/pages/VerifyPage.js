@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Alert,
@@ -92,14 +92,11 @@ function VerifyPage() {
       window.open(url, "_blank", "noopener");
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     } catch (err) {
-      setError("\u062a\u0639\u0630\u0631 \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0645\u0644\u0641.");
+      setError("تعذر تحميل الملف.");
     } finally {
       setLoadingPreview(false);
     }
   };
-
-
-
 
   useEffect(() => {
     const initialSerial = searchParams.get("serial");
@@ -263,14 +260,12 @@ function VerifyPage() {
                 onClick={handleLoadPreview}
                 disabled={loadingPreview}
               >
-                {loadingPreview ? "\u062c\u0627\u0631\u064d \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0645\u0639\u0627\u064a\u0646\u0629..." : "\u0639\u0631\u0636 \u0627\u0644\u0645\u0644\u0641"}
+                {loadingPreview ? "جارٍ تحميل المعاينة..." : "عرض الملف"}
               </Button>
             ) : null}
           </CardContent>
         </Card>
       </Box>
-
-
     </Box>
   );
 }

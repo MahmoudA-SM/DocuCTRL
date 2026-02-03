@@ -28,7 +28,6 @@ api.interceptors.response.use(
       try {
         localStorage.removeItem("access_token");
       } catch (err) {
-        // ignore storage errors
       }
       if (window.location.pathname !== "/login") {
         window.location.href = "/login";
@@ -45,6 +44,51 @@ export const getMe = async () => {
 
 export const getMyProjects = async () => {
   const response = await api.get("/me/projects");
+  return response.data;
+};
+
+export const getVisibleUsers = async (projectId) => {
+  const response = await api.get("/users/visible", {
+    params: { project_id: projectId },
+  });
+  return response.data;
+};
+
+export const getPermissions = async (projectId) => {
+  const response = await api.get("/permissions", {
+    params: { project_id: projectId },
+  });
+  return response.data;
+};
+
+export const getRolePresets = async (projectId) => {
+  const response = await api.get("/roles/presets", {
+    params: { project_id: projectId },
+  });
+  return response.data;
+};
+
+export const getUserPermissionsForProject = async ({ projectId, userId }) => {
+  const response = await api.get(`/projects/${projectId}/users/${userId}/permissions`);
+  return response.data;
+};
+
+export const setUserPermissionsForProject = async ({ projectId, userId, permissions }) => {
+  const response = await api.put(`/projects/${projectId}/users/${userId}/permissions`, {
+    permissions,
+  });
+  return response.data;
+};
+
+export const assignUserRoleToProject = async ({ projectId, userId, roleName }) => {
+  const response = await api.post(`/projects/${projectId}/users/${userId}/roles`, {
+    role_name: roleName,
+  });
+  return response.data;
+};
+
+export const removeUserRoleFromProject = async ({ projectId, userId, roleName }) => {
+  const response = await api.delete(`/projects/${projectId}/users/${userId}/roles/${roleName}`);
   return response.data;
 };
 

@@ -12,6 +12,7 @@ import DocumentListPage from "./pages/DocumentListPage";
 import VerifyPage from "./pages/VerifyPage";
 import CreateProjectPage from "./pages/CreateProjectPage";
 import CreateUserPage from "./pages/CreateUserPage";
+import ManageRolesPage from "./pages/ManageRolesPage";
 import { getMe } from "./services/api";
 
 function App() {
@@ -31,7 +32,6 @@ function App() {
         try {
           localStorage.setItem("access_token", urlToken);
         } catch (err) {
-          // ignore storage errors
         }
         url.searchParams.delete("access_token");
         window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
@@ -49,7 +49,6 @@ function App() {
         try {
           localStorage.removeItem("access_token");
         } catch (removeErr) {
-          // ignore storage errors
         }
         window.location.href = "/login";
       }
@@ -201,6 +200,29 @@ function App() {
                 {sidebarCollapsed ? "" : "إضافة مستخدم"}
               </Button>
             ) : null}
+            {canManageUsers ? (
+              <Button
+                component={Link}
+                to="/roles"
+                variant="outlined"
+                fullWidth
+                startIcon={<PersonAddAltIcon />}
+                title={sidebarCollapsed ? "إدارة الصلاحيات" : undefined}
+                aria-label={sidebarCollapsed ? "إدارة الصلاحيات" : undefined}
+                sx={{
+                  justifyContent: sidebarCollapsed ? "center" : "flex-start",
+                  px: sidebarCollapsed ? 1 : 2,
+                  minWidth: sidebarCollapsed ? 44 : "auto",
+                  height: sidebarCollapsed ? 44 : "auto",
+                  borderRadius: sidebarCollapsed ? 2.5 : 1.5,
+                  "& .MuiButton-startIcon": {
+                    margin: 0,
+                  },
+                }}
+              >
+                {sidebarCollapsed ? "" : "إدارة الصلاحيات"}
+              </Button>
+            ) : null}
             {canVerify ? (
               <Button
                 component={Link}
@@ -245,26 +267,6 @@ function App() {
                   </Typography>
                 </Box>
                 <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                  {canVerify ? (
-                    <Button component={Link} to="/verify" variant="outlined">
-                      التحقق من مستند
-                    </Button>
-                  ) : null}
-                  {canManageProjects ? (
-                    <Button component={Link} to="/projects/new" variant="outlined">
-                      إنشاء مشروع
-                    </Button>
-                  ) : null}
-                  {canManageUsers ? (
-                    <Button component={Link} to="/users/new" variant="outlined">
-                      إضافة مستخدم
-                    </Button>
-                  ) : null}
-                  {canUpload ? (
-                    <Button component={Link} to="/upload" variant="contained">
-                      رفع مستند
-                    </Button>
-                  ) : null}
                 </Box>
               </Box>
             </Container>
@@ -278,6 +280,7 @@ function App() {
               <Route path="/documents" element={<DocumentListPage />} />
               <Route path="/projects/:projectId/documents" element={<DocumentListPage />} />
               <Route path="/users/new" element={<CreateUserPage />} />
+              <Route path="/roles" element={<ManageRolesPage />} />
               <Route path="/verify" element={<VerifyPage />} />
             </Routes>
           </Container>

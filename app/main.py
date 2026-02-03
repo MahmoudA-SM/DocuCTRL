@@ -22,23 +22,41 @@ from pydantic import BaseModel, constr, EmailStr
 from typing import Optional
 
 from . import models, database, utils, auth
+from .rbac import (
+    Permissions, require_permission, require_all_permissions,
+    get_user_permissions, get_user_roles, assign_role_to_user,
+    remove_role_from_user, get_user_effective_role, seed_rbac_data,
+    has_permission, get_user_highest_role, get_role_rank
+)
 from supabase import create_client, Client
+
+require_document_upload = require_permission(Permissions.DOCUMENT_UPLOAD)
+require_document_read = require_permission(Permissions.DOCUMENT_READ)
+require_document_download = require_permission(Permissions.DOCUMENT_DOWNLOAD)
+require_document_delete = require_permission(Permissions.DOCUMENT_DELETE)
+require_project_create = require_permission(Permissions.PROJECT_CREATE)
+require_project_manage = require_permission(Permissions.PROJECT_MANAGE)
+require_user_manage = require_permission(Permissions.USER_MANAGE)
+require_user_read = require_permission(Permissions.USER_READ)
+require_user_invite = require_permission(Permissions.USER_INVITE)
+require_company_create = require_permission(Permissions.COMPANY_CREATE)
+require_role_manage = require_permission(Permissions.ROLE_MANAGE)
+require_role_assign = require_permission(Permissions.ROLE_ASSIGN)
 
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Supabase Configuration
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "docuctrl-files")
 SUPABASE_SIGNED_URL_TTL = int(os.getenv("SUPABASE_SIGNED_URL_TTL", "300"))
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "").strip().lower()
 
 supabase: Client = None
 if SUPABASE_URL and SUPABASE_KEY:
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Use a writable storage directory, preferring /tmp on hosted environments.
 def _resolve_storage_dir() -> str:
     configured = os.getenv("STORAGE_DIR")
     if configured:
@@ -92,6 +110,15 @@ def _initialize_database() -> None:
         models.Base.metadata.create_all(bind=database.engine)
         ensure_user_email_column()
         ensure_document_original_filename_column()
+        
+        db = database.SessionLocal()
+        try:
+            seed_rbac_data(db)
+            logger.info("RBAC data seeded successfully")
+        except Exception as exc:
+            logger.warning("RBAC seeding skipped: %s", exc)
+        finally:
+            db.close()
     except SQLAlchemyError as exc:
         logger.warning("Database initialization skipped: %s", exc)
 
@@ -99,7 +126,6 @@ _initialize_database()
 
 app = FastAPI(title="Document Control System")
 
-# Mount static files for React frontend
 REACT_BUILD_DIR = os.path.join(BASE_DIR, "frontend", "build")
 if os.path.exists(REACT_BUILD_DIR):
     app.mount("/static", StaticFiles(directory=os.path.join(REACT_BUILD_DIR, "static")), name="static")
@@ -149,7 +175,6 @@ async def login_for_access_token(response: RedirectResponse, form_data: OAuth2Pa
         expires_delta=timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     
-    # Return JSON but also set cookie for browser access
     content = {"access_token": access_token, "token_type": "bearer"}
     resp = JSONResponse(content=content)
     cookie_secure = os.getenv("COOKIE_SECURE", "true").lower() == "true"
@@ -167,7 +192,6 @@ async def login_for_access_token(response: RedirectResponse, form_data: OAuth2Pa
     )
     return resp
 
-# Replace the dummy get_current_user with the real one
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.User:
     return auth.get_current_user(request, db)
 
@@ -207,8 +231,35 @@ def read_root(request: Request, db: Session = Depends(get_db)):
         return resp
 
 @app.get("/me")
-def get_me(user: models.User = Depends(get_current_user)):
-    return {"id": user.id, "email": user.email}
+def get_me(user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    
+    roles_data = []
+    user_roles = db.query(models.UserRole).filter(models.UserRole.user_id == user.id).all()
+    
+    for ur in user_roles:
+        role = db.query(models.Role).filter(models.Role.id == ur.role_id).first()
+        if role:
+            permissions = [rp.permission.name for rp in role.permissions]
+            role_info = {
+                "id": role.id,
+                "name": role.name,
+                "description": role.description,
+                "project_id": ur.project_id,
+                "permissions": permissions,
+            }
+            roles_data.append(role_info)
+    
+    global_perms = get_user_permissions(db, user.id, None)
+    
+    effective_role = get_user_effective_role(db, user.id, None)
+    
+    return {
+        "id": user.id,
+        "email": user.email,
+        "roles": roles_data,
+        "global_permissions": list(global_perms),
+        "effective_role": effective_role
+    }
 
 
 class UserCreate(BaseModel):
@@ -216,10 +267,20 @@ class UserCreate(BaseModel):
     password: constr(min_length=8, max_length=128)
 
 
+class UserRoleAssignment(BaseModel):
+    project_id: int
+    role_name: constr(strip_whitespace=True, min_length=2, max_length=64) | None = None
+    permissions: list[str] | None = None
+
+
+class UserCreateWithRoles(UserCreate):
+    assignments: list[UserRoleAssignment]
+
+
 @app.post("/users", status_code=status.HTTP_201_CREATED)
 @app.post("/register", status_code=status.HTTP_201_CREATED)
 def register_user(
-    payload: UserCreate,
+    payload: UserCreateWithRoles,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
@@ -228,8 +289,79 @@ def register_user(
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
     hashed_password = auth.get_password_hash(payload.password)
+    if not payload.assignments:
+        raise HTTPException(status_code=400, detail="At least one project assignment is required")
+
     user = models.User(email=email, hashed_password=hashed_password)
     db.add(user)
+    db.flush()
+
+    seen_projects = set()
+    for assignment in payload.assignments:
+        if assignment.project_id in seen_projects:
+            raise HTTPException(status_code=400, detail="Duplicate project assignment is not allowed")
+        seen_projects.add(assignment.project_id)
+        if not has_permission(db, current_user.id, Permissions.USER_CREATE, assignment.project_id):
+            raise HTTPException(status_code=403, detail="Permission denied to create user for project")
+        project = db.query(models.Project).filter(models.Project.id == assignment.project_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail=f"Project not found: {assignment.project_id}")
+        if not assignment.role_name and not assignment.permissions:
+            raise HTTPException(status_code=400, detail="Role or permissions are required for each project assignment")
+
+        existing_assignment = db.query(models.UserProjectAssignment).filter(
+            models.UserProjectAssignment.user_id == user.id,
+            models.UserProjectAssignment.project_id == assignment.project_id,
+        ).first()
+        if not existing_assignment:
+            db.add(
+                models.UserProjectAssignment(
+                    user_id=user.id,
+                    project_id=assignment.project_id,
+                )
+            )
+
+        if assignment.role_name:
+            current_role = get_user_highest_role(db, current_user.id, assignment.project_id)
+            if not current_role:
+                raise HTTPException(status_code=403, detail="Cannot assign role without a project role")
+            current_rank = get_role_rank(current_role)
+            target_rank = get_role_rank(assignment.role_name)
+            if target_rank < current_rank and Permissions.ADMIN_ALL not in get_user_permissions(db, current_user.id, assignment.project_id):
+                raise HTTPException(status_code=403, detail="Cannot assign a higher role")
+            role = db.query(models.Role).filter(models.Role.name == assignment.role_name).first()
+            if not role:
+                raise HTTPException(status_code=404, detail=f"Role not found: {assignment.role_name}")
+            db.add(
+                models.UserRole(
+                    user_id=user.id,
+                    role_id=role.id,
+                    project_id=assignment.project_id,
+                )
+            )
+
+        if assignment.permissions:
+            current_perms = get_user_permissions(db, current_user.id, assignment.project_id)
+            if Permissions.ADMIN_ALL not in current_perms:
+                missing = set(assignment.permissions) - current_perms
+                if missing:
+                    raise HTTPException(status_code=403, detail=f"Cannot grant permissions: {', '.join(sorted(missing))}")
+            permission_rows = db.query(models.Permission).filter(
+                models.Permission.name.in_(assignment.permissions)
+            ).all()
+            permission_by_name = {perm.name: perm for perm in permission_rows}
+            unknown = set(assignment.permissions) - set(permission_by_name.keys())
+            if unknown:
+                raise HTTPException(status_code=400, detail=f"Unknown permissions: {', '.join(sorted(unknown))}")
+            for perm in permission_by_name.values():
+                db.add(
+                    models.UserPermission(
+                        user_id=user.id,
+                        permission_id=perm.id,
+                        project_id=assignment.project_id,
+                    )
+                )
+
     db.commit()
     db.refresh(user)
     return {"id": user.id, "email": user.email}
@@ -263,6 +395,182 @@ def get_my_projects(user: models.User = Depends(get_current_user), db: Session =
     ]
 
 
+@app.get("/users/visible")
+def list_visible_users(
+    project_id: int | None = None,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if project_id is None:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    if not has_permission(db, current_user.id, Permissions.USER_READ, project_id):
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    users = (
+        db.query(models.User)
+        .join(models.UserProjectAssignment, models.UserProjectAssignment.user_id == models.User.id)
+        .filter(models.UserProjectAssignment.project_id == project_id)
+        .order_by(models.User.email.asc())
+        .all()
+    )
+    visible = []
+    for user in users:
+        if user.id == current_user.id:
+            continue
+        user_role = get_user_highest_role(db, user.id, project_id)
+        role_assignments = db.query(models.UserRole).filter(
+            models.UserRole.user_id == user.id,
+            models.UserRole.project_id == project_id,
+        ).all()
+        roles = []
+        for assignment in role_assignments:
+            role = db.query(models.Role).filter(models.Role.id == assignment.role_id).first()
+            if role:
+                roles.append(
+                    {
+                        "name": role.name,
+                        "project_id": assignment.project_id,
+                    }
+                )
+        visible.append(
+            {
+                "id": user.id,
+                "email": user.email,
+                "effective_role": user_role,
+                "roles": roles,
+            }
+        )
+    return visible
+
+
+@app.get("/permissions")
+def list_permissions(
+    project_id: int | None = None,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if project_id is None:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    if not has_permission(db, current_user.id, Permissions.USER_READ, project_id):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    perms = db.query(models.Permission).order_by(
+        models.Permission.resource.asc(),
+        models.Permission.action.asc(),
+    ).all()
+    return [
+        {
+            "name": perm.name,
+            "resource": perm.resource,
+            "action": perm.action,
+        }
+        for perm in perms
+    ]
+
+
+@app.get("/roles/presets")
+def list_role_presets(
+    project_id: int | None = None,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if project_id is None:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    if not has_permission(db, current_user.id, Permissions.USER_READ, project_id):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    roles = db.query(models.Role).order_by(models.Role.name.asc()).all()
+    result = []
+    for role in roles:
+        permissions = [rp.permission.name for rp in role.permissions]
+        result.append(
+            {
+                "name": role.name,
+                "description": role.description,
+                "permissions": permissions,
+            }
+        )
+    return result
+
+
+@app.get("/projects/{project_id}/users/{user_id}/permissions")
+def get_user_permissions_for_project(
+    project_id: int,
+    user_id: int,
+    current_user: models.User = Depends(require_user_read),
+    db: Session = Depends(get_db),
+):
+    if not has_permission(db, current_user.id, Permissions.USER_READ, project_id):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    direct_perms = db.query(models.Permission.name).join(
+        models.UserPermission,
+        models.UserPermission.permission_id == models.Permission.id,
+    ).filter(
+        models.UserPermission.user_id == user_id,
+        models.UserPermission.project_id == project_id,
+    ).all()
+    direct_list = [name for (name,) in direct_perms]
+    effective = list(get_user_permissions(db, user_id, project_id))
+    return {
+        "direct_permissions": sorted(direct_list),
+        "effective_permissions": sorted(effective),
+    }
+
+
+class UserPermissionUpdate(BaseModel):
+    permissions: list[str]
+
+
+@app.put("/projects/{project_id}/users/{user_id}/permissions")
+def set_user_permissions_for_project(
+    project_id: int,
+    user_id: int,
+    payload: UserPermissionUpdate,
+    current_user: models.User = Depends(require_user_manage),
+    db: Session = Depends(get_db),
+):
+    if not has_permission(db, current_user.id, Permissions.USER_MANAGE, project_id):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    target_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    requested = {name.strip() for name in payload.permissions if name.strip()}
+    if not requested:
+        requested = set()
+
+    current_perms = get_user_permissions(db, current_user.id, project_id)
+    if Permissions.ADMIN_ALL not in current_perms:
+        unauthorized = requested - current_perms
+        if unauthorized:
+            raise HTTPException(status_code=403, detail=f"Cannot grant permissions: {', '.join(sorted(unauthorized))}")
+
+    permission_rows = db.query(models.Permission).filter(
+        models.Permission.name.in_(requested)
+    ).all()
+    permission_by_name = {perm.name: perm for perm in permission_rows}
+    missing = requested.difference(permission_by_name.keys())
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Unknown permissions: {', '.join(sorted(missing))}")
+
+    db.query(models.UserPermission).filter(
+        models.UserPermission.user_id == user_id,
+        models.UserPermission.project_id == project_id,
+    ).delete()
+
+    for perm in permission_by_name.values():
+        db.add(
+            models.UserPermission(
+                user_id=user_id,
+                permission_id=perm.id,
+                project_id=project_id,
+            )
+        )
+    db.commit()
+    return {"status": "updated", "user_id": user_id, "project_id": project_id, "count": len(permission_by_name)}
+
+
 class ProjectCreate(BaseModel):
     name: str
     owner_company_id: int
@@ -275,7 +583,7 @@ class OwnerCompanyCreate(BaseModel):
 def create_owner_company(
     payload: OwnerCompanyCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(require_company_create),
 ):
     normalized_code = payload.code.strip().upper()
     existing = db.query(models.OwnerCompany).filter(
@@ -294,7 +602,7 @@ def create_owner_company(
 def create_project(
     project_data: ProjectCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(require_project_create)
 ):
     owner = db.query(models.OwnerCompany).filter(
         models.OwnerCompany.id == project_data.owner_company_id
@@ -317,6 +625,42 @@ def create_project(
     db.add(assignment)
     db.commit()
     db.refresh(new_project)
+
+    if ADMIN_EMAIL:
+        admin_user = db.query(models.User).filter(models.User.email == ADMIN_EMAIL).first()
+        if admin_user:
+            admin_role = db.query(models.Role).filter(models.Role.name == "admin").first()
+            if admin_role:
+                existing_role = db.query(models.UserRole).filter(
+                    models.UserRole.user_id == admin_user.id,
+                    models.UserRole.project_id == new_project.id,
+                ).first()
+                if not existing_role:
+                    db.add(
+                        models.UserRole(
+                            user_id=admin_user.id,
+                            role_id=admin_role.id,
+                            project_id=new_project.id,
+                        )
+                    )
+            admin_perm = db.query(models.Permission).filter(
+                models.Permission.name == Permissions.ADMIN_ALL
+            ).first()
+            if admin_perm:
+                existing_perm = db.query(models.UserPermission).filter(
+                    models.UserPermission.user_id == admin_user.id,
+                    models.UserPermission.permission_id == admin_perm.id,
+                    models.UserPermission.project_id == new_project.id,
+                ).first()
+                if not existing_perm:
+                    db.add(
+                        models.UserPermission(
+                            user_id=admin_user.id,
+                            permission_id=admin_perm.id,
+                            project_id=new_project.id,
+                        )
+                    )
+            db.commit()
     
     return {
         "id": new_project.id,
@@ -337,7 +681,7 @@ async def upload_document(
     owner_company_id: int | None = Form(None),
     user_id: int | None = Form(None),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(require_document_upload)
 ):
     filename_lower = file.filename.lower()
     content_type = (file.content_type or "").lower()
@@ -351,6 +695,13 @@ async def upload_document(
 
     if user_id is None:
         user_id = current_user.id
+    
+    if not has_permission(db, current_user.id, Permissions.DOCUMENT_UPLOAD, project_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to upload documents to this project"
+        )
+    
     assignment = db.query(models.UserProjectAssignment).filter(
         models.UserProjectAssignment.user_id == user_id,
         models.UserProjectAssignment.project_id == project_id
@@ -412,7 +763,6 @@ async def upload_document(
 
         utils.stamp_pdf(input_path, output_path, serial, project.name, owner.name)
 
-        # Upload to Supabase
         if supabase:
             with open(output_path, "rb") as f:
                 destination = f"{serial}_{safe_name}"
@@ -433,7 +783,6 @@ async def upload_document(
         raise HTTPException(status_code=500, detail=f"Upload/stamp failed: {str(e)}")
 
     finally:
-        # Cleanup
         try:
             if os.path.exists(input_path):
                 os.remove(input_path)
@@ -478,7 +827,6 @@ def verify_document(
     base_url = str(request.base_url).rstrip("/") if request else ""
     download_url = f"{base_url}/documents/{doc.id}/download"
 
-    # Check existence (Supabase only)
     exists = False
     storage_path = None
     if supabase:
@@ -488,7 +836,6 @@ def verify_document(
                 options={"search": f"{doc.serial}_"},
             )
             if res:
-                # Prefer exact filename match when available, otherwise take the first serial match.
                 exact_name = f"{doc.serial}_{doc.filename}"
                 match = next((item for item in res if item.get("name") == exact_name), None)
                 storage_path = (match or res[0]).get("name")
@@ -512,7 +859,16 @@ def verify_document(
 
 
 @app.get("/projects/{project_id}/documents")
-def list_documents(project_id: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+def list_documents(
+    project_id: int,
+    user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not has_permission(db, user.id, Permissions.DOCUMENT_READ, project_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to read documents for this project"
+        )
     assignment = db.query(models.UserProjectAssignment).filter(
         models.UserProjectAssignment.user_id == user.id,
         models.UserProjectAssignment.project_id == project_id
@@ -538,12 +894,20 @@ def list_documents(project_id: int, user: models.User = Depends(get_current_user
 
 @app.get("/documents")
 def list_all_documents(user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    docs = (
+    query = (
         db.query(models.Document, models.Project)
         .join(models.Project, models.Document.project_id == models.Project.id)
         .order_by(models.Document.id.desc())
-        .all()
     )
+    if not has_permission(db, user.id, Permissions.DOCUMENT_READ, None):
+        query = (
+            query.join(
+                models.UserProjectAssignment,
+                models.UserProjectAssignment.project_id == models.Project.id,
+            )
+            .filter(models.UserProjectAssignment.user_id == user.id)
+        )
+    docs = query.all()
     return [
         {
             "id": doc.id,
@@ -569,7 +933,20 @@ def export_documents(
         .order_by(models.Document.id.desc())
     )
     if project_id:
+        if not has_permission(db, user.id, Permissions.DOCUMENT_READ, project_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to export documents for this project"
+            )
         query = query.filter(models.Document.project_id == project_id)
+    elif not has_permission(db, user.id, Permissions.DOCUMENT_READ, None):
+        query = (
+            query.join(
+                models.UserProjectAssignment,
+                models.UserProjectAssignment.project_id == models.Project.id,
+            )
+            .filter(models.UserProjectAssignment.user_id == user.id)
+        )
     rows = query.all()
 
     workbook = Workbook()
@@ -605,6 +982,20 @@ def download_document(
     doc = db.query(models.Document).filter(models.Document.id == document_id).first()
     if not doc or not doc.serial:
         raise HTTPException(status_code=404, detail="Document not found")
+    if not has_permission(db, current_user.id, Permissions.DOCUMENT_DOWNLOAD, doc.project_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to download this document"
+        )
+    assignment = db.query(models.UserProjectAssignment).filter(
+        models.UserProjectAssignment.user_id == current_user.id,
+        models.UserProjectAssignment.project_id == doc.project_id
+    ).first()
+    if not assignment:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not assigned to this project"
+        )
 
     download_name = doc.original_filename or doc.filename
     fallback_name = "".join(
@@ -629,7 +1020,6 @@ def download_document(
             signed_url = None
 
         if not signed_url:
-            # Fallback: find by serial prefix if filename mismatch.
             try:
                 matches = supabase.storage.from_(SUPABASE_BUCKET).list(
                     path="",
@@ -668,3 +1058,114 @@ def download_document(
             media_type="application/pdf",
             headers={"Content-Disposition": content_disposition},
         )
+
+
+class RoleAssignmentRequest(BaseModel):
+    role_name: constr(strip_whitespace=True, min_length=2, max_length=64)
+
+
+@app.post("/projects/{project_id}/users/{user_id}/roles")
+def assign_user_role_to_project(
+    project_id: int,
+    user_id: int,
+    payload: RoleAssignmentRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_role_assign),
+):
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    target_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    current_role = get_user_highest_role(db, current_user.id, project_id)
+    if not current_role:
+        raise HTTPException(status_code=403, detail="Cannot assign role without a project role")
+    current_rank = get_role_rank(current_role)
+    target_rank = get_role_rank(payload.role_name)
+    current_perms = get_user_permissions(db, current_user.id, project_id)
+    if target_rank < current_rank and Permissions.ADMIN_ALL not in current_perms:
+        raise HTTPException(status_code=403, detail="Cannot assign a higher role")
+
+    user_role = assign_role_to_user(
+        db=db,
+        user_id=user_id,
+        role_name=payload.role_name,
+        project_id=project_id,
+        admin_user_id=current_user.id,
+    )
+    return {
+        "status": "assigned",
+        "user_id": user_id,
+        "project_id": project_id,
+        "role_name": payload.role_name,
+        "assignment_id": user_role.id,
+    }
+
+
+@app.delete("/projects/{project_id}/users/{user_id}/roles/{role_name}")
+def remove_user_role_from_project(
+    project_id: int,
+    user_id: int,
+    role_name: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_role_assign),
+):
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    removed = remove_role_from_user(
+        db=db,
+        user_id=user_id,
+        role_name=role_name,
+        project_id=project_id,
+    )
+    if not removed:
+        raise HTTPException(status_code=404, detail="Role assignment not found")
+    return {"status": "removed", "user_id": user_id, "project_id": project_id, "role_name": role_name}
+
+
+
+
+@app.delete("/documents/{document_id}")
+def delete_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    doc = db.query(models.Document).filter(models.Document.id == document_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if not has_permission(db, current_user.id, Permissions.DOCUMENT_DELETE, doc.project_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to delete this document"
+        )
+    assignment = db.query(models.UserProjectAssignment).filter(
+        models.UserProjectAssignment.user_id == current_user.id,
+        models.UserProjectAssignment.project_id == doc.project_id
+    ).first()
+    if not assignment:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not assigned to this project"
+        )
+
+    storage_name = f"{doc.serial}_{doc.filename}" if doc.serial else None
+    local_path = os.path.join(STORAGE_DIR, storage_name) if storage_name else None
+
+    if supabase and storage_name:
+        try:
+            supabase.storage.from_(SUPABASE_BUCKET).remove([storage_name])
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Failed to delete file: {str(exc)}")
+    if local_path and os.path.exists(local_path):
+        try:
+            os.remove(local_path)
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Failed to delete local file: {str(exc)}")
+
+    db.delete(doc)
+    db.commit()
+    return {"status": "deleted", "document_id": document_id}

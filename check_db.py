@@ -3,14 +3,12 @@ from sqlalchemy import inspect
 
 db = database.SessionLocal()
 
-# Check table structure
 inspector = inspect(database.engine)
 columns = inspector.get_columns('users')
 print("Columns in 'users' table:")
 for col in columns:
     print(f"  - {col['name']}: {col['type']}")
 
-# Check if any users exist
 users = db.query(models.User).all()
 print(f"\nTotal users in database: {len(users)}")
 for user in users:
