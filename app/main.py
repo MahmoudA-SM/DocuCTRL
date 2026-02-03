@@ -151,6 +151,23 @@ def get_db():
     finally:
         db.close()
 
+def _has_admin_any_project(db: Session, user_id: int) -> bool:
+    admin_perm = db.query(models.UserPermission).join(
+        models.Permission, models.UserPermission.permission_id == models.Permission.id
+    ).filter(
+        models.UserPermission.user_id == user_id,
+        models.Permission.name == Permissions.ADMIN_ALL,
+    ).first()
+    if admin_perm:
+        return True
+    admin_role = db.query(models.UserRole).join(
+        models.Role, models.UserRole.role_id == models.Role.id
+    ).filter(
+        models.UserRole.user_id == user_id,
+        models.Role.name == "admin",
+    ).first()
+    return bool(admin_role)
+
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page():
@@ -369,13 +386,16 @@ def register_user(
 @app.get("/me/projects")
 def get_my_projects(user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
-        projects = (
-            db.query(models.Project)
-            .join(models.UserProjectAssignment, models.UserProjectAssignment.project_id == models.Project.id)
-            .filter(models.UserProjectAssignment.user_id == user.id)
-            .order_by(models.Project.name.asc())
-            .all()
-        )
+        if Permissions.ADMIN_ALL in get_user_permissions(db, user.id, None):
+            projects = db.query(models.Project).order_by(models.Project.name.asc()).all()
+        else:
+            projects = (
+                db.query(models.Project)
+                .join(models.UserProjectAssignment, models.UserProjectAssignment.project_id == models.Project.id)
+                .filter(models.UserProjectAssignment.user_id == user.id)
+                .order_by(models.Project.name.asc())
+                .all()
+            )
     except SQLAlchemyError as exc:
         logger.exception("Failed to load user projects for user_id=%s", user.id)
         raise HTTPException(
@@ -981,6 +1001,17 @@ def list_documents(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to read documents for this project"
         )
+    if has_permission(db, user.id, Permissions.ADMIN_ALL, project_id):
+        docs = db.query(models.Document).filter(models.Document.project_id == project_id).order_by(models.Document.id.desc()).all()
+        return [
+            {
+                "id": d.id,
+                "serial": d.serial,
+                "filename": d.original_filename or d.filename,
+                "upload_date": d.upload_date.isoformat() if d.upload_date else None,
+            }
+            for d in docs
+        ]
     assignment = db.query(models.UserProjectAssignment).filter(
         models.UserProjectAssignment.user_id == user.id,
         models.UserProjectAssignment.project_id == project_id
@@ -1011,7 +1042,7 @@ def list_all_documents(user: models.User = Depends(get_current_user), db: Sessio
         .join(models.Project, models.Document.project_id == models.Project.id)
         .order_by(models.Document.id.desc())
     )
-    if not has_permission(db, user.id, Permissions.DOCUMENT_READ, None):
+    if not _has_admin_any_project(db, user.id):
         query = (
             query.join(
                 models.UserProjectAssignment,
@@ -1051,14 +1082,15 @@ def export_documents(
                 detail="You don't have permission to export documents for this project"
             )
         query = query.filter(models.Document.project_id == project_id)
-    elif not has_permission(db, user.id, Permissions.DOCUMENT_READ, None):
-        query = (
-            query.join(
-                models.UserProjectAssignment,
-                models.UserProjectAssignment.project_id == models.Project.id,
+    else:
+        if not _has_admin_any_project(db, user.id):
+            query = (
+                query.join(
+                    models.UserProjectAssignment,
+                    models.UserProjectAssignment.project_id == models.Project.id,
+                )
+                .filter(models.UserProjectAssignment.user_id == user.id)
             )
-            .filter(models.UserProjectAssignment.user_id == user.id)
-        )
     rows = query.all()
 
     workbook = Workbook()
@@ -1099,10 +1131,13 @@ def download_document(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to download this document"
         )
-    assignment = db.query(models.UserProjectAssignment).filter(
-        models.UserProjectAssignment.user_id == current_user.id,
-        models.UserProjectAssignment.project_id == doc.project_id
-    ).first()
+    if has_permission(db, current_user.id, Permissions.ADMIN_ALL, doc.project_id):
+        assignment = True
+    else:
+        assignment = db.query(models.UserProjectAssignment).filter(
+            models.UserProjectAssignment.user_id == current_user.id,
+            models.UserProjectAssignment.project_id == doc.project_id
+        ).first()
     if not assignment:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
