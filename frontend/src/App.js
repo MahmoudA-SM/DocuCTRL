@@ -25,6 +25,7 @@ function App() {
   useEffect(() => {
     const ensureAuth = async () => {
       if (window.location.pathname === "/login") {
+        setAuthChecked(true);
         return;
       }
       const url = new URL(window.location.href);
@@ -42,10 +43,10 @@ function App() {
         window.location.href = "/login";
         return;
       }
+      setAuthChecked(true);
       try {
         const meData = await getMe();
         setMe(meData);
-        setAuthChecked(true);
       } catch (err) {
         try {
           localStorage.removeItem("access_token");
@@ -58,7 +59,19 @@ function App() {
   }, []);
 
   if (!authChecked) {
-    return null;
+    return (
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "var(--bg)",
+        }}
+      >
+        <Typography color="text.secondary">جاري التحميل...</Typography>
+      </Box>
+    );
   }
 
   const canManageUsers = true;
