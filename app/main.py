@@ -418,6 +418,7 @@ def get_my_projects(user: models.User = Depends(get_current_user), db: Session =
 @app.get("/users/visible")
 def list_visible_users(
     project_id: int | None = None,
+    lite: bool = False,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -446,6 +447,18 @@ def list_visible_users(
             .all()
         )
     visible = []
+    if lite:
+        for user in users:
+            if user.id == current_user.id:
+                continue
+            visible.append(
+                {
+                    "id": user.id,
+                    "email": user.email,
+                }
+            )
+        return visible
+
     for user in users:
         if user.id == current_user.id:
             continue

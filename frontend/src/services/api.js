@@ -49,7 +49,7 @@ export const getMyProjects = async () => {
 
 export const getVisibleUsers = async (projectId) => {
   const response = await api.get("/users/visible", {
-    params: { project_id: projectId },
+    params: { project_id: projectId, lite: true },
   });
   return response.data;
 };
