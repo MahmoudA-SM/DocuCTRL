@@ -386,7 +386,7 @@ def register_user(
 @app.get("/me/projects")
 def get_my_projects(user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
-        if Permissions.ADMIN_ALL in get_user_permissions(db, user.id, None):
+        if _has_admin_any_project(db, user.id):
             projects = db.query(models.Project).order_by(models.Project.name.asc()).all()
         else:
             projects = (
@@ -432,10 +432,10 @@ def list_visible_users(
         models.UserRole.project_id == project_id,
         models.Role.name == "admin",
     ).first()
-    if not has_admin_perm and not has_admin_role and Permissions.USER_READ not in current_perms:
+    if not has_admin_perm and not has_admin_role and not _has_admin_any_project(db, current_user.id) and Permissions.USER_READ not in current_perms:
         raise HTTPException(status_code=403, detail="Permission denied")
 
-    if has_admin_perm or has_admin_role:
+    if has_admin_perm or has_admin_role or _has_admin_any_project(db, current_user.id):
         users = db.query(models.User).order_by(models.User.email.asc()).all()
     else:
         users = (
@@ -554,7 +554,7 @@ def assign_user_to_project(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if not has_permission(db, current_user.id, Permissions.USER_MANAGE, project_id):
+    if not has_permission(db, current_user.id, Permissions.USER_MANAGE, project_id) and not _has_admin_any_project(db, current_user.id):
         raise HTTPException(status_code=403, detail="Permission denied")
     project = db.query(models.Project).filter(models.Project.id == project_id).first()
     if not project:
@@ -582,7 +582,7 @@ def remove_user_from_project(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if not has_permission(db, current_user.id, Permissions.USER_MANAGE, project_id):
+    if not has_permission(db, current_user.id, Permissions.USER_MANAGE, project_id) and not _has_admin_any_project(db, current_user.id):
         raise HTTPException(status_code=403, detail="Permission denied")
     assignment = db.query(models.UserProjectAssignment).filter(
         models.UserProjectAssignment.user_id == user_id,
@@ -834,10 +834,13 @@ async def upload_document(
             detail="You don't have permission to upload documents to this project"
         )
     
-    assignment = db.query(models.UserProjectAssignment).filter(
-        models.UserProjectAssignment.user_id == user_id,
-        models.UserProjectAssignment.project_id == project_id
-    ).first()
+    if has_permission(db, current_user.id, Permissions.ADMIN_ALL, project_id) or _has_admin_any_project(db, current_user.id):
+        assignment = True
+    else:
+        assignment = db.query(models.UserProjectAssignment).filter(
+            models.UserProjectAssignment.user_id == user_id,
+            models.UserProjectAssignment.project_id == project_id
+        ).first()
     if not assignment:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

@@ -191,14 +191,17 @@ def get_user_roles(
     project_id: Optional[int] = None
 ) -> List[models.Role]:
     
-    if project_id is None:
-        return []
     query = db.query(models.Role).join(models.UserRole).filter(
         models.UserRole.user_id == user_id
     )
     
-    if project_id is not None:
-        query = query.filter(models.UserRole.project_id == project_id)
+    if project_id is None:
+        query = query.filter(models.UserRole.project_id.is_(None))
+    else:
+        query = query.filter(
+            (models.UserRole.project_id == project_id)
+            | (models.UserRole.project_id.is_(None))
+        )
     
     return query.distinct().all()
 
@@ -240,6 +243,14 @@ def has_permission(
     user_perms = get_user_permissions(db, user_id, project_id)
     
     if Permissions.ADMIN_ALL in user_perms:
+        return True
+    admin_any = db.query(models.UserPermission).join(
+        models.Permission, models.UserPermission.permission_id == models.Permission.id
+    ).filter(
+        models.UserPermission.user_id == user_id,
+        models.Permission.name == Permissions.ADMIN_ALL,
+    ).first()
+    if admin_any:
         return True
     
     return permission in user_perms
